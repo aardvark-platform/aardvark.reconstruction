@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <OutputPath>..\..\bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <OutputPath>..\..\bin\Release\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Camera\CameraView.fs" />
+    <Compile Include="Camera\Distortion.fs" />
+    <Compile Include="Camera\Projection.fs" />
+    <Compile Include="Camera\Camera.fs" />
+    <Compile Include="ModelEstimation\Ransac.fs" />
+    <Compile Include="ModelEstimation\Mulsac.fs" />
+    <Compile Include="Epipolar\Util.fs" />
+    <Compile Include="Epipolar\Homography.fs" />
+    <Compile Include="Epipolar\Fundamental.fs" />
+    <Compile Include="Epipolar\Essential.fs" />
+    <Compile Include="Epipolar\PNP.fs" />
+    <Compile Include="SensorDb\SensorDb.fs" />
+    <EmbeddedResource Include="SensorDb\database.csv" />
+    <EmbeddedResource Include="SensorDb\aliceVision.csv" />
+  </ItemGroup>
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>
