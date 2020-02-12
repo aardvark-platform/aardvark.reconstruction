@@ -9,7 +9,7 @@ open Aardvark.Fake
 
 do Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
-DefaultSetup.install ["src/__SOLUTION_NAME__.sln"]
+DefaultSetup.install ["src/Aardvark.Reconstruction.sln"]
 
 
 entry()
