@@ -2,6 +2,8 @@
 
 open Aardvark.Base
 
+#nowarn "49" //uppercase variable identifiers
+
 module FundamentalMatrix =
 
     [<AutoOpen>]

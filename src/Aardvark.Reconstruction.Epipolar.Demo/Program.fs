@@ -570,8 +570,8 @@ module Test =
         
     [<EntryPoint>]
     let main argv =
-        //fundamentalChecker()
-        createAndRenderExampleTest()
+        fundamentalChecker()
+        //createAndRenderExampleTest()
         //runManyExamples()
 
         printfn "Hello World from F#!"
