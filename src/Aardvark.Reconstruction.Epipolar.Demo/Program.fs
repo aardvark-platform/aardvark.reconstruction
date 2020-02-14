@@ -13,6 +13,14 @@ open FShade
 open Aardvark.Reconstruction
 
 module Test = 
+    let getBestFittingMot (c0 : Camera) (c1 : Camera) (mots : list<CameraMotion>) =
+        mots |> List.maxBy (fun mot -> 
+            let r = c0 + mot
+            let dir = (1.0 + Vec.dot c1.Forward r.Forward)/2.0 * 1000.0
+            let pos = -Vec.length (c1.Location - r.Location)
+            (dir, pos)
+        )
+
     let fundamentalChecker() =
         Aardvark.Init()
         Ag.initialize()
@@ -80,16 +88,9 @@ module Test =
                 let c0 = c0.GetValue(t)
                 let c1 = c1.GetValue(t)
                 let scale = scale.GetValue(t)
-                let inline getBestFittingMot (mots : list<CameraMotion>) =
-                    mots |> List.maxBy (fun mot -> 
-                        let c1e = c0 + mot*scale
-                        let dir = (1.0 + Vec.dot c1.Forward c1e.Forward)/2.0 * 1000.0  |> int
-                        let pos = -Vec.length (c1.Location - c1e.Location)
-                        (dir, pos)
-                    )
                 match FundamentalMatrix.decompose F c0.proj c1.proj [] with
                 | [] -> None
-                | mots -> getBestFittingMot mots |> Some
+                | mots -> getBestFittingMot c0 c1 mots |> Some
             )
         let c1e = 
             Mod.custom (fun t -> 
@@ -259,7 +260,7 @@ module Test =
                 | None -> 
                     [CameraMotion.Zero],V2d.Zero,V2d.Zero
                 | Some (F,lsbr,rsbl) -> 
-                    match FundamentalMatrix.decompose2 F c0.proj c1.proj [] with
+                    match FundamentalMatrix.decompose F c0.proj c1.proj [] with
                     | [] -> 
                         [CameraMotion.Zero],lsbr,rsbl
                     | fs -> 
@@ -272,16 +273,8 @@ module Test =
                 | Some cp -> 
                     cp
 
-            let getBestFittingMot (mots : list<CameraMotion>) =
-                mots |> List.maxBy (fun mot -> 
-                    let r = c0 + mot
-                    let dir = (1.0 + Vec.dot c1.Forward r.Forward)/2.0 * 1000.0  |> int
-                    let pos = -Vec.length (c1.Location - r.Location)
-                    (dir, pos)
-                )
-
-            let ch = { (c0 + (getBestFittingMot hmot)) with proj = c1.proj }
-            let cf = { (c0 + (getBestFittingMot fmot)) with proj = c1.proj }
+            let ch = { (c0 + (getBestFittingMot c0 c1 hmot)) with proj = c1.proj }
+            let cf = { (c0 + (getBestFittingMot c0 c1 fmot)) with proj = c1.proj }
 
             if 
              not ( Camera.approxEqual 1E-4 c1 cp ) ||
@@ -493,7 +486,7 @@ module Test =
                 | None -> 
                     [CameraMotion.Zero]
                 | Some (F,lsbr,rsbl) -> 
-                    match FundamentalMatrix.decompose2 F c0.proj c1.proj [] with
+                    match FundamentalMatrix.decompose F c0.proj c1.proj [] with
                     | [] -> 
                         [CameraMotion.Zero]
                     | fs -> 
@@ -506,16 +499,8 @@ module Test =
                 | Some cp -> 
                     cp
 
-            let getBestFittingMot (mots : list<CameraMotion>) =
-                mots |> List.maxBy (fun mot -> 
-                    let r = c0 + mot
-                    let dir = (1.0 + Vec.dot c1.Forward r.Forward)/2.0 * 1000.0  |> int
-                    let pos = -Vec.length (c1.Location - r.Location)
-                    (dir, pos)
-                )
-
-            let ch = { (c0 + (getBestFittingMot hmot)) with proj = c1.proj }
-            let cf = { (c0 + (getBestFittingMot fmot)) with proj = c1.proj }
+            let ch = { (c0 + (getBestFittingMot c0 c1 hmot)) with proj = c1.proj }
+            let cf = { (c0 + (getBestFittingMot c0 c1 fmot)) with proj = c1.proj }
 
             let pg = ( Camera.approxEqual 1E-4 c1 cp )
             let hg = ( Camera.approxEqual 1E-4 c1 ch )
@@ -533,7 +518,7 @@ module Test =
                 Log.error "ch %f" chs
                 Log.error "cp %f" cps
 
-                (c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d) |> Pickler.pickler.Pickle |> File.writeAllBytes @"D:\bla\dump.bin"
+                (c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d) |> Pickler.pickler.Pickle |> File.writeAllBytes @"C:\temp\dump.bin"
 
                 failwithf "%A" (cfs+chs+cps)
 
@@ -559,9 +544,7 @@ module Test =
             counter |> Mod.map ( fun _ -> 
                 Log.startTimed("Generate scene")
                 //let c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d = Generate.randomScene()
-                let (c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d) : Camera * Camera * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V3d>> * list<V3d * V3d * list<V3d>> =
-                    File.readAllBytes @"D:\bla\dump.bin"
-                    |> Pickler.pickler.UnPickle
+                let (c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d) : Camera * Camera * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V3d>> * list<V3d * V3d * list<V3d>> = File.readAllBytes @"C:\temp\dump.bin" |> Pickler.pickler.UnPickle
                 let Ppoints2dc0 = Hpoints2dc0@Fpoints2dc0
                 let Ppoints2dc1 = Hpoints2dc1@Fpoints2dc1
                 let scale = (c1.Location - c0.Location).Length
@@ -601,7 +584,9 @@ module Test =
                         Log.warn "No fundamental possible"
                         [CameraMotion.Zero]
                     | Some (F,lsbr,rsbl) -> 
-                        match FundamentalMatrix.decompose2 F c0.proj c1.proj [] with
+                        Log.line "lsbr %A" lsbr
+                        Log.line "rsbl %A" rsbl
+                        match FundamentalMatrix.decompose F c0.proj c1.proj [] with
                         | [] -> 
                             Log.warn "Fundamental decompose failed"
                             [CameraMotion.Zero]
@@ -618,16 +603,8 @@ module Test =
                         Log.line "Recovered P6P camera"
                         cp
 
-                let getBestFittingMot (mots : list<CameraMotion>) =
-                    mots |> List.maxBy (fun mot -> 
-                        let r = c0 + mot
-                        let dir = (1.0 + Vec.dot c1.Forward r.Forward)/2.0 * 1000.0  |> int
-                        let pos = -Vec.length (c1.Location - r.Location)
-                        (dir, pos)
-                    )
-
-                let ch = { (c0 + (getBestFittingMot hmot)) with proj = c1.proj }
-                let cf = { (c0 + (getBestFittingMot fmot)) with proj = c1.proj }
+                let cf = { (c0 + (getBestFittingMot c0 c1 fmot)) with proj = c1.proj }
+                let ch = { (c0 + (getBestFittingMot c0 c1 hmot)) with proj = c1.proj }
 
                 let fu c = 
                     pMatches |> Array.sumBy (fun (o,p) -> 
@@ -810,9 +787,9 @@ module Test =
     [<EntryPoint>]
     let main argv =
         //fundamentalChecker()
-        //singleRenderTest()
+        singleRenderTest()
         //runManyExamples()
-        runManyAndRenderIfBad()
+        //runManyAndRenderIfBad()
 
         printfn "Hello World from F#!"
         0 // return an integer exit code
