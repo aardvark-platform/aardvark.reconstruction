@@ -110,7 +110,7 @@ module Homography =
         let K0 = Projection.toTrafo lIntern
         let hNorm = K1.Backward * H * K0.Forward
         
-        let eps = 1e-6
+        let eps = 1e-12
 
         //Log.warn "%A" hNorm.Det
 
@@ -140,7 +140,8 @@ module Homography =
                 let x2 = if x = 3 then 2 else 3
                 let y2 = if y = 3 then 2 else 3
 
-                - (m x1 y1 * m x2 y2 - m x1 y2 * m x2 y1)
+                let v = - (m x1 y1 * m x2 y2 - m x1 y2 * m x2 y1)
+                if abs v < eps then 0.0 else v  //prevent possible sign flip around 0.0
             
             let S = H.Transposed * H - M33d.Identity
 

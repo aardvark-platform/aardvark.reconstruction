@@ -265,10 +265,11 @@ module Distortion =
         else
             1000.0 //?
     let approxEqual (eps : float) (l : Distortion) (r : Distortion) =
-        V2d.ApproxEqual(l.principalPoint, r.principalPoint, eps) &&
-        l.imageSize = r.imageSize &&
-        l.distortion.ForwardCoefficients.Length = r.distortion.ForwardCoefficients.Length &&
-        Array.forall2 (fun lc rc -> abs (rc - lc) <= eps) l.distortion.ForwardCoefficients r.distortion.ForwardCoefficients
+        sameness l r <= eps
+        // V2d.ApproxEqual(l.principalPoint, r.principalPoint, eps) &&
+        // l.imageSize = r.imageSize &&
+        // l.distortion.ForwardCoefficients.Length = r.distortion.ForwardCoefficients.Length &&
+        // Array.forall2 (fun lc rc -> abs (rc - lc) <= eps) l.distortion.ForwardCoefficients r.distortion.ForwardCoefficients
 
     let distort (ndc : V2d) (dist : Distortion) =
         let d = ndc + dist.principalPoint

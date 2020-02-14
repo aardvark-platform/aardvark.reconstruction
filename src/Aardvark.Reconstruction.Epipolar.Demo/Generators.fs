@@ -89,7 +89,7 @@ module Sg =
 module Generate = 
     let rand = RandomSystem()
     let mkSg points3d =
-        points3d |> List.collect (fun ((n,p),pts) -> 
+        points3d |> List.collect (fun (n,p,pts) -> 
             let pcol = rand.UniformC3f().ToC4b()
             let fcol = rand.UniformC3f().ToC4b()
             [
@@ -106,9 +106,16 @@ module Generate =
             do! DefaultSurfaces.simpleLighting
             }
 
-    let randCond (create : RandomSystem -> 'a) (check : 'a -> bool) =
+    let rec randCond (create : RandomSystem -> 'a) (check : 'a -> bool) =
+        let mutable tries = 0
         Seq.initInfinite (fun _ -> 
-            create rand
+            tries <- tries + 1
+            if tries < 10000 then
+                create rand
+            else
+                Log.warn "bad rand" 
+                create rand
+                
         ) |> Seq.filter check
           |> Seq.head
 
@@ -134,20 +141,21 @@ module Generate =
         let scale = 4.0
         let p0 = V3d.IOO * 2.0 * scale
         let cv0 = CameraView.lookAt p0 V3d.OOO V3d.OOI
+        let trans = 
+            let dir = 
+                let xy = rand.UniformV2d(Box2d(V2d.NN,V2d.II))
+                let off = randCond (fun rand -> scale * 0.25 * rand.UniformDouble()) (fun v -> abs v > 0.5)
+                V3d(off, xy.X, xy.Y)
+            let len = randCond (fun rand -> (rand.UniformDouble() * 2.0 - 1.0)*scale) (fun v -> abs v > 1.5)
+            dir * len
+        let p1 = p0 + trans        
         let cv1 = 
-            let trans = 
-                let dir = 
-                    let xy = rand.UniformV2d(Box2d(V2d.NN,V2d.II))
-                    let off = randCond (fun rand -> scale * 0.25 * rand.UniformDouble()) (fun v -> abs v > 0.5)
-                    V3d(off, xy.X, xy.Y)
-                let len = randCond (fun rand -> (rand.UniformDouble() * 2.0 - 1.0)*scale) (fun v -> abs v > 1.5)
-                dir * len
             let target = rand.UniformV3d(Box3d(V3d.NNN, V3d.III))
-            CameraView.lookAt (p0 + trans) target V3d.OOI
+            CameraView.lookAt p1 target V3d.OOI
         let c0 = { view = cv0; proj = randomProjection() }
         let c1 = { view = cv1; proj = randomProjection() }
 
-        let quads =
+        let HQuads, FQuads =
             let num = rand.UniformInt(3) + 2
             let basequads = 
                 List.init num (fun _ -> 
@@ -159,23 +167,46 @@ module Generate =
                             )
                             (fun v -> v.Length > scale / 8.0)
                     let n = 
-                        let krassness = scale * 2.0
-                        let target = rand.UniformV3d(Box3d(V3d(p0.X, p0.Y-krassness, p0.Z-krassness),V3d(p0.X, p0.Y+krassness, p0.Z+krassness)))
-                        (target - p).Normalized
-                    n,p
+                        let krassness = scale * 1.0
+                        let n = 
+                            let target = 
+                                randCond (fun rand -> rand.UniformV3d(Box3d(V3d(p1.X, p1.Y-krassness, p1.Z-krassness),V3d(p1.X, p1.Y+krassness, p1.Z+krassness)))
+                                ) (fun t -> (p1-t).Length > 0.1)
+                            (target - p).Normalized    
+                        n
+                        
+                    2,n,p
                 )
-            let specialquads =
-                let (pn,pp) = basequads |> List.last 
+            let HQuads = 
+                basequads |> List.take 1
+
+            let FQuads =
+                let (_,pno,pp) = basequads |> List.last 
+                let pn =  (Rot3d(V3d.III.Normalized,45.0*Constant.RadiansPerDegree).TransformPos pno).Normalized
                 let n1 = Vec.cross pn V3d.OOI
                 let n2 = Vec.cross n1 pn
-                [   n1,pp
-                    n2,pp
+                let pp2 = pp + V3d.OII * scale * 0.25
+                let pn2 = (Rot3d(V3d.PNN.Normalized,60.0*Constant.RadiansPerDegree).TransformPos pno).Normalized
+                let n12 = Vec.cross pn2 V3d.OOI
+                let n22 = Vec.cross n12 pn2
+                let pp3 = pp2 + V3d.PON * scale * 0.25
+                let pn3 = (Rot3d(V3d.OOI.Normalized,90.0*Constant.RadiansPerDegree).TransformPos pn2).Normalized
+                let n13 = Vec.cross pn3 V3d.OOI
+                let n23 = Vec.cross n13 pn3
+                [   1,pn, pp
+                    1,n1, pp
+                    1,n2, pp
+                    2,pn2,pp2
+                    2,n12,pp2
+                    2,n22,pp2
+                    1,pn3,pp3
+                    1,n13,pp3
+                    1,n23,pp3
                 ]
-            basequads @ specialquads
+            HQuads, FQuads
 
-
-        let points3d =
-            quads |> List.map (fun (n,p) -> 
+        let points3d quads =
+            quads |> List.map (fun (w,n,p) -> 
                 let n = n |> Vec.normalize
                 let dy = Vec.cross n V3d.OOI |> Vec.normalize
                 let dx = Vec.cross dy n      |> Vec.normalize
@@ -189,23 +220,33 @@ module Generate =
 
                 let pts = 
                     List.concat [
-                        rnd 3 (Box3d(V3d.NNO,V3d.OOO))
-                        rnd 3 (Box3d(V3d.ONO,V3d.IOO))
-                        rnd 3 (Box3d(V3d.NOO,V3d.OIO))
-                        rnd 3 (Box3d(V3d.OOO,V3d.IIO))
+                        rnd w (Box3d(V3d.NNO,V3d.OOO))
+                        rnd w (Box3d(V3d.ONO,V3d.IOO))
+                        rnd w (Box3d(V3d.NOO,V3d.OIO))
+                        rnd w (Box3d(V3d.OOO,V3d.IIO))
                     ]
                     
-                (n,p), pts
+                n,p, pts
             )
 
+        let Hpoints3d = points3d HQuads
+        let Fpoints3d = points3d FQuads
 
-        let points2dc0 =
-            points3d |> List.map (fun (plane,pts) -> 
-                plane, pts |> List.map (fun pt -> Camera.projectUnsafe pt c0)
+        let Hpoints2dc0 =
+            Hpoints3d |> List.map (fun (n,p,pts) -> 
+                n,p, pts |> List.map (fun pt -> Camera.projectUnsafe pt c0)
             )
-        let points2dc1 =
-            points3d |> List.map (fun (plane,pts) -> 
-                plane, pts |> List.map (fun pt -> Camera.projectUnsafe pt c1)
+        let Hpoints2dc1 =
+            Hpoints3d |> List.map (fun (n,p,pts) -> 
+                n,p, pts |> List.map (fun pt -> Camera.projectUnsafe pt c1)
+            )
+        let Fpoints2dc0 =
+            Fpoints3d |> List.map (fun (n,p,pts) -> 
+                n,p, pts |> List.map (fun pt -> Camera.projectUnsafe pt c0)
+            )
+        let Fpoints2dc1 =
+            Fpoints3d |> List.map (fun (n,p,pts) -> 
+                n,p, pts |> List.map (fun pt -> Camera.projectUnsafe pt c1)
             )
             
-        c0, points2dc0, c1, points2dc1, points3d
+        c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d
