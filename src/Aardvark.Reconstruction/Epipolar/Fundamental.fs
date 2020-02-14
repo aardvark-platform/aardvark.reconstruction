@@ -133,23 +133,82 @@ module FundamentalMatrix =
         let F = Kr.Backward.Transposed * R * Kl.Forward.Transposed * M33d.crossProductMatrix (Kl.Forward * R.Transposed * t)
         F
 
+    //Terzakis, George. Relative camera pose recovery and scene reconstruction with the essential matrix in a nutshell. Technical report MIDAS. SNMSE. 2013. TR. 007, Marine and Industrial Dynamic Analysis School of Marine Science and Engineering, Plymouth University, Tech. Rep, 2013.    
+    let decompose2 (F : M33d) (lIntern : Projection) (rIntern : Projection) (referencePoints : list<V2d * V2d>)  =
+        let Kl = Projection.toTrafo lIntern
+        let Kr = Projection.toTrafo rIntern
+
+        let ess = Kr.Forward.Transposed * F * Kl.Forward
+        match SVD.Decompose ess with
+        | Some(U,S,Vt) -> 
+            let En = U * M33d.Diagonal(1.0,1.0,0.0) * Vt
+            let eTe = En.Transposed * En
+            
+            let inline e i j =    En.[i-1,j-1]
+            let inline ete i j = eTe.[i-1,j-1]
+
+
+            let mutable b1 = sqrt (1.0 - ete 1 1)
+            let mutable b2 = sqrt (1.0 - ete 2 2)
+            let mutable b3 = sqrt (1.0 - ete 3 3)
+
+            if b1 > b2 && b1 > b3 then
+                if ete 1 2 > 0.0 then
+                    b2 <- -b2
+                if ete 1 3 > 0.0 then
+                    b3 <- -b3
+            elif b2 > b1 && b2 > b3 then
+                if ete 1 2 > 0.0 then
+                    b1 <- -b1
+                if ete 2 3 > 0.0 then
+                    b3 <- -b3
+            else
+                if ete 1 3 > 0.0 then
+                    b1 <- -b1
+                if ete 2 3 > 0.0 then
+                    b2 <- -b2
+
+            let t1 = V3d( b1, b2, b3) |> Vec.normalize
+            let t2 = V3d(-b1,-b2,-b3) |> Vec.normalize                            
+
+            let C = 
+                M33d(
+                      e 2 2 * e 3 3 - e 3 2 * e 2 3,  -(e 2 1 * e 3 3 - e 3 1 * e 2 3),   e 2 1 * e 3 2 - e 3 1 * e 2 2,
+                    -(e 1 2 * e 3 3 - e 3 2 * e 1 3),   e 1 1 * e 3 3 - e 3 1 * e 1 3,  -(e 1 1 * e 3 2 - e 3 1 * e 1 2),
+                      e 1 2 * e 2 3 - e 2 2 * e 1 3,  -(e 1 1 * e 2 3 - e 2 1 * e 1 3),   e 1 1 * e 2 2 - e 2 1 * e 1 2                    
+                )
+
+            let R1 = (C.Transposed + M33d.crossProductMatrix(t1) * En.Transposed).ToOrthoNormal().Transposed    
+            let R2 = (C.Transposed + M33d.crossProductMatrix(t2) * En.Transposed).ToOrthoNormal().Transposed           
+
+            [
+                { trafo = Euclidean3d(R1, R1 * t1); isNormalized = true }
+                { trafo = Euclidean3d(R1, R1 * t2); isNormalized = true }
+                { trafo = Euclidean3d(R2, R2 * t1); isNormalized = true }
+                { trafo = Euclidean3d(R2, R2 * t2); isNormalized = true }
+            ]
+
+        | None -> 
+            Log.error "should not happen"
+            []
+        
+
+    // gelbes book S.178
     let decompose (F : M33d) (lIntern : Projection) (rIntern : Projection) (referencePoints : list<V2d * V2d>)  =
         let Kl = Projection.toTrafo lIntern
         let Kr = Projection.toTrafo rIntern
 
-        // gelbes book S.178
         let ess = Kr.Forward.Transposed * F * Kl.Forward
         
         match SVD.Decompose ess with
         | Some(U,S,Vt) -> 
-            let V = Vt.Transposed
-        
-            let G = M33d(0.0, 1.0, 0.0, 
-                        -1.0, 0.0, 0.0, 
-                         0.0, 0.0, 1.0)
-                         
-            let R1 = U * G * V.Transposed
-            let R2 = U * G.Transposed * V.Transposed
+            let G = 
+                M33d(0.0,  1.0, 0.0, 
+                    -1.0,  0.0, 0.0, 
+                     0.0,  0.0, 1.0)
+
+            let R1 = U * G * Vt
+            let R2 = U * G.Transposed * Vt
         
             let inline t (m : M33d) =
                 V3d(m.M21,m.M02,m.M10)
@@ -198,18 +257,11 @@ module FundamentalMatrix =
                     with _ ->
                         l
 
-            let result = 
-                List.fold check [] [
-                    R1, t1
-                    R2, t1
-                    R1, t2
-                    R2, t2
-                ] 
-            match result with
-                | [] -> 
-                    //printfn "bad"
-                    []
-                | _ ->
-                    result
+            List.fold check [] [
+                R1, t1
+                R2, t1
+                R1, t2
+                R2, t2
+            ] 
         | None -> []
  

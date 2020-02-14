@@ -1,4 +1,3 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -11,11 +10,11 @@
     <OutputPath>..\..\bin\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Generators.fs" />
-    <Compile Include="Program.fs" />
+    <ProjectReference Include="..\Aardvark.Reconstruction\Aardvark.Reconstruction.fsproj" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Aardvark.Reconstruction\Aardvark.Reconstruction.fsproj" />
+    <Compile Include="Generators.fs" />
+    <Compile Include="Program.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

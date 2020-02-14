@@ -259,7 +259,7 @@ module Test =
                 | None -> 
                     [CameraMotion.Zero],V2d.Zero,V2d.Zero
                 | Some (F,lsbr,rsbl) -> 
-                    match FundamentalMatrix.decompose F c0.proj c1.proj [] with
+                    match FundamentalMatrix.decompose2 F c0.proj c1.proj [] with
                     | [] -> 
                         [CameraMotion.Zero],lsbr,rsbl
                     | fs -> 
@@ -493,7 +493,7 @@ module Test =
                 | None -> 
                     [CameraMotion.Zero]
                 | Some (F,lsbr,rsbl) -> 
-                    match FundamentalMatrix.decompose F c0.proj c1.proj [] with
+                    match FundamentalMatrix.decompose2 F c0.proj c1.proj [] with
                     | [] -> 
                         [CameraMotion.Zero]
                     | fs -> 
@@ -601,7 +601,7 @@ module Test =
                         Log.warn "No fundamental possible"
                         [CameraMotion.Zero]
                     | Some (F,lsbr,rsbl) -> 
-                        match FundamentalMatrix.decompose F c0.proj c1.proj [] with
+                        match FundamentalMatrix.decompose2 F c0.proj c1.proj [] with
                         | [] -> 
                             Log.warn "Fundamental decompose failed"
                             [CameraMotion.Zero]
@@ -810,9 +810,9 @@ module Test =
     [<EntryPoint>]
     let main argv =
         //fundamentalChecker()
-        singleRenderTest()
+        //singleRenderTest()
         //runManyExamples()
-        //runManyAndRenderIfBad()
+        runManyAndRenderIfBad()
 
         printfn "Hello World from F#!"
         0 // return an integer exit code
