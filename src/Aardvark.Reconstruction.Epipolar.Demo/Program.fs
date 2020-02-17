@@ -15,9 +15,9 @@ open Aardvark.Reconstruction
 module Test = 
     [<EntryPoint>]
     let main argv =
-        //fundamentalChecker()
+        fundamentalChecker()
         //singleRenderTest()
-        runManyExamples()
+        //runManyExamples()
         //runManyAndRenderIfBad()
 
         printfn "Hello World from F#!"

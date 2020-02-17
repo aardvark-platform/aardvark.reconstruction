@@ -88,6 +88,12 @@ module Testy =
             ) rview rproj
         let c0 = Mod.init (c1.GetValue())
 
+        let rand = RandomSystem()
+        let noise (p : V2d) =
+            let n = rand.UniformV2dDirection() * (rand.UniformDouble()*0.0025)
+            p+n
+            
+
         let c0obs =
             Mod.map (fun c0  -> 
                 (ftrs |> Array.map (fun p -> Camera.projectUnsafe p c0))
@@ -115,7 +121,7 @@ module Testy =
                     FundamentalMatrix.fromCameras c0 c1
                 else
                     let matches = matches.GetValue t
-                    match FundamentalMatrix.recover 1E-8 matches with
+                    match FundamentalMatrix.recover Double.PositiveInfinity matches with
                     | Some (F,lsbr,rsbl) -> F,lsbr,rsbl
                     | None -> M33d.Identity, V2d.OO, V2d.OO
             )
