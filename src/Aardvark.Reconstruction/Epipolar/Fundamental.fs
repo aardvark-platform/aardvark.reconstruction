@@ -131,7 +131,9 @@ module FundamentalMatrix =
         let Kl = l.proj.Trafo
         let Kr = r.proj.Trafo
         let F = Kr.Backward.Transposed * R * Kl.Forward.Transposed * M33d.crossProductMatrix (Kl.Forward * R.Transposed * t)
-        F
+        let lsbr = r.ProjectUnsafe l.Location
+        let rsbl = l.ProjectUnsafe r.Location
+        F,lsbr,rsbl
 
     //Terzakis, George. Relative camera pose recovery and scene reconstruction with the essential matrix in a nutshell. Technical report MIDAS. SNMSE. 2013. TR. 007, Marine and Industrial Dynamic Analysis School of Marine Science and Engineering, Plymouth University, Tech. Rep, 2013.    
     let decompose2 (F : M33d) (lIntern : Projection) (rIntern : Projection) (referencePoints : list<V2d * V2d>)  =

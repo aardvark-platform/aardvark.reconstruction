@@ -14,6 +14,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Generators.fs" />
+    <Compile Include="FundamentalChecker.fs" />
+    <Compile Include="PerfectDemos.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
