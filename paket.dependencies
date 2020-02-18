@@ -20,6 +20,10 @@ nuget MiniCV
 nuget FSharp.Data
 nuget MetadataExtractor
 
+nuget FsCheck ~> 2.14.0
+nuget Expecto ~> 8.13.1
+nuget Expecto.FsCheck ~> 8.13.1
+
 group Build
 source https://api.nuget.org/v3/index.json
 github aardvark-platform/aardvark.fake:v5

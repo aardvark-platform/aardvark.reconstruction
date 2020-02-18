@@ -6,6 +6,7 @@ open Aardvark.Base.Incremental.Operators
 open Aardvark.Reconstruction
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
+open FsCheck
 
 module IGP =
     let solidQuadrangleOfPlane ((n,p) : V3d*V3d) (scale : float) (color : C4b) =
@@ -121,7 +122,7 @@ module Generate =
 
     let inline floatBetween (min : float) (max : float) = min + rand.UniformDouble() * (max - min)
     let inline intBetween (min : int) (max : int) = min + rand.UniformInt(max - min)
-
+    
     let randomProjection() =
         let aspect = floatBetween 1.0 2.370
         let focal = floatBetween 0.67 2.0
@@ -251,5 +252,162 @@ module Generate =
             
         c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d
 
-// module Random =
-//     type Trans =     
+module Lala =
+    //let rand = RandomSystem()
+
+    let reasonableFloat =
+        Arb.generate<NormalFloat> 
+        |> Gen.filter (fun (NormalFloat v) -> not (abs v > 1E10))
+        |> Gen.map (fun (NormalFloat v) -> v)
+
+    let reasonableInt =
+        Gen.choose(-10000,10000)
+
+    let reasonableAngleRad =
+        reasonableFloat
+        |> Gen.map (fun v -> v % Constant.PiTimesTwo)
+
+    let floatBetween min max =
+        let size = max - min
+        Arb.generate<uint32>
+        |> Gen.map (fun i -> (float i / float System.UInt32.MaxValue) * size + min)
+        
+    let arbV2d (b : Box2d) =
+        gen {
+            let! x = floatBetween b.Min.X b.Max.X
+            let! y = floatBetween b.Min.Y b.Max.Y
+            return V2d(x,y)
+        }    
+
+    let arbV3d (b : Box3d) =
+        gen {
+            let! x = floatBetween b.Min.X b.Max.X
+            let! y = floatBetween b.Min.Y b.Max.Y
+            let! z = floatBetween b.Min.Z b.Max.Z
+            return V3d(x,y,z)
+        }        
+
+    let arbPos =
+        gen {
+            let! x = reasonableFloat
+            let! y = reasonableFloat
+            let! z = reasonableFloat
+            return V3d(x,y,z)
+        }
+    
+    let arbDir =
+        gen {
+            let! phi = reasonableAngleRad
+            let! z = floatBetween -1.0 1.0
+            let s = sqrt (1.0 - z * z)
+            return V3d(cos phi * s, sin phi * s, z)
+        }    
+
+    let arbProjection =
+        gen {
+            let! aspect = floatBetween 0.7 2.6
+            let! focal = floatBetween 0.5 3.0
+            let! px = Gen.choose(320,7680)
+            let! py = Gen.choose(240,4320)
+            let sizes = V2i(px,py)
+            let! pp = arbV2d (Box2d(V2d(-0.5,-0.5),V2d(0.5,0.5)))
+            return 
+                { Projection.identity with 
+                    aspect = aspect 
+                    focalLength = focal
+                    distortion = { imageSize = sizes; distortion = RadialDistortion2d.Identity; principalPoint = pp }
+                }
+        }
+
+    type ArbCameraTrans = 
+        | None
+        | AlongFw of float
+        | InPlane of V2d
+        | ArbitraryDir of V3d
+
+    type RotModifier =
+        | None
+        | Roll of float
+        | Normal
+        | NormalAndRoll of float
+
+    type ArbPoints =
+        | AlongLine of Line3d
+        | InQuad of Quad3d
+        | InVolume of Box3d
+
+    type NoiseKind =
+        | Offset
+        | Garbage
+        | Mismatch
+
+    let genRotModifier =
+        gen {
+            let! i = Gen.choose(0,3)
+            match i with
+            | 0 -> return RotModifier.None
+            | 1 -> 
+                let! a = reasonableAngleRad
+                return Roll a
+            | 2 -> return Normal
+            | 3 -> 
+                let! a = reasonableAngleRad
+                return NormalAndRoll a
+            | _ -> 
+                return failwith "no"
+        }
+
+    let genCameraTrans (scale : float) =
+        gen {
+            let! i = Gen.choose(0,3)
+            match i with
+            | 0 -> return ArbCameraTrans.None
+            | 1 -> 
+                let sh = scale/2.0
+                let! d = floatBetween -sh sh
+                return AlongFw d
+            | 2 -> 
+                let sh = scale/2.0           
+                let! dx = floatBetween -sh sh 
+                let! dy = floatBetween -sh sh 
+                return InPlane (V2d(dx,dy))
+            | 3 -> 
+                let sh = scale/2.0
+                let! dir = arbDir
+                let! len = floatBetween -sh sh
+                return ArbitraryDir (dir*len)
+            | _ -> 
+                return failwith "no"
+        }
+
+    let applyTrans (c0 : Camera) (t : ArbCameraTrans) =
+        match t with
+        | ArbCameraTrans.None -> c0
+        | AlongFw len -> 
+            let p1 = c0.Location + c0.Forward * len
+            { c0 with view = CameraView.lookAt p1 (p1 + c0.Forward) c0.Up }
+        | InPlane d -> 
+            let p1 = c0.Location + c0.Right * d.X + c0.Up * d.Y
+            { c0 with view = CameraView.lookAt p1 (p1 + c0.Forward) c0.Up }
+        | ArbitraryDir v -> 
+            let p1 = c0.Location + v
+            { c0 with view = CameraView.lookAt p1 (p1 + c0.Forward) c0.Up }
+
+    // let applyRot (c0 : Camera) (dataBb : Box3d) (r : RotModifier) =
+    //     match r with
+    //     | None -> c0
+    //     | Normal -> 
+
+    // let generate() =
+    //     gen {
+    //         let! p0 = reasonablePos
+    //         let! t0 = reasonablePos
+    //         let u0 =  Vec.cross (Vec.cross p0 V3d.OOI) t0
+    //         let cv0 = CameraView.lookAt p0 t0 u0
+    //         let proj0 = arbProjection
+    //         let cam0 = { view = cv0; proj = proj0 }
+            
+    //     }
+
+    // let generate() =
+    //     let 
