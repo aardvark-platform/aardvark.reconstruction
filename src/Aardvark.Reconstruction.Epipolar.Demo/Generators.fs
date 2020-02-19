@@ -341,6 +341,42 @@ module Lala =
         | Garbage
         | Mismatch
 
+    let arbLineWithin (box : Box3d) =
+        gen {
+            let! o = arbV3d box
+            let! d = arbDir
+            let ray1 = Ray3d(o,d)
+            let ray0 = Ray3d(o,-d)
+            let mutable t0 = 0.0
+            box.Intersects(ray0,&t0) |> ignore
+            let mutable t1 = 0.0
+            box.Intersects(ray1,&t1) |> ignore
+            return Line3d(ray0.GetPointOnRay t0, ray1.GetPointOnRay t1)
+        }    
+
+    let arbQuadFacing45 (cam : Camera) (scale : float) =
+        gen {
+            let! cd = floatBetween scale (3.0*scale)
+            let c = cam.Location + cam.Forward * cd
+            let cone = Cone3d(cam.Location, cam.Forward, Constant.PiHalf)
+            let circ = cone.GetCircle(1.0)
+            let! ra = reasonableAngleRad
+            let! rr = floatBetween 0.0 circ.Radius
+            let circ2world = circ.Plane.GetPlaneSpaceTransform()
+            let p = V3d(rr*cos(ra),rr*sin(ra),0.0) |> circ2world.Forward.TransformPos
+            let n = (cam.Location - p).Normalized
+            
+            let u = Vec.cross n V3d.OOI |> Vec.normalize |> ((*)scale)
+            let v = Vec.cross u n       |> Vec.normalize |> ((*)scale)    
+            
+            let p0 = c - u - v
+            let p1 = c - u + v
+            let p2 = c + u + v
+            let p3 = c + u - v
+
+            return Quad3d(p0,p1,p2,p3)
+        }
+
     let genRotModifier =
         gen {
             let! i = Gen.choose(0,3)
@@ -393,21 +429,35 @@ module Lala =
             let p1 = c0.Location + v
             { c0 with view = CameraView.lookAt p1 (p1 + c0.Forward) c0.Up }
 
-    // let applyRot (c0 : Camera) (dataBb : Box3d) (r : RotModifier) =
-    //     match r with
-    //     | None -> c0
-    //     | Normal -> 
+    let applyRot (c0 : Camera) (dataBb : Box3d) (r : RotModifier) =
+        match r with
+        | None -> c0
+        | Normal -> 
+            let fw1 = (c0.Location - dataBb.Center).Normalized
+            { c0 with view = CameraView.lookAt c0.Location (c0.Location + fw1) c0.Up }
+        | Roll a -> 
+            let up1 = Rot3d(c0.Forward,a).TransformDir c0.Up
+            { c0 with view = CameraView.lookAt c0.Location (c0.Location + c0.Forward) up1 }
+        | NormalAndRoll a -> 
+            let fw1 = (c0.Location - dataBb.Center).Normalized
+            let up1 = Rot3d(fw1,a).TransformDir c0.Up
+            { c0 with view = CameraView.lookAt c0.Location (c0.Location + fw1) up1 }
 
-    // let generate() =
-    //     gen {
-    //         let! p0 = reasonablePos
-    //         let! t0 = reasonablePos
-    //         let u0 =  Vec.cross (Vec.cross p0 V3d.OOI) t0
-    //         let cv0 = CameraView.lookAt p0 t0 u0
-    //         let proj0 = arbProjection
-    //         let cam0 = { view = cv0; proj = proj0 }
+    let generate() =
+        gen {
+            let! scale = floatBetween 4.0 12.0            
+
+            let! p0 = arbPos
+            let! t0 = arbPos
+            let u0 =  Vec.cross (Vec.cross p0 V3d.OOI) t0
+            let cv0 = CameraView.lookAt p0 t0 u0
+            let! proj0 = arbProjection
+            let cam0 = { view = cv0; proj = proj0 }
+            let! trans1 = genCameraTrans scale
+            let! rot1 = genRotModifier 
             
-    //     }
+            return failwith ""
+        }
 
     // let generate() =
     //     let 
