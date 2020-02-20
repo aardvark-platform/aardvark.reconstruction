@@ -255,10 +255,12 @@ module Generate =
 module Lala =
     //let rand = RandomSystem()
 
-    let reasonableFloat =
-        Arb.generate<NormalFloat> 
-        |> Gen.filter (fun (NormalFloat v) -> not (abs v > 1E10))
-        |> Gen.map (fun (NormalFloat v) -> v)
+    let floatBetween min max =
+        let size = max - min
+        Gen.choose (0, System.Int32.MaxValue)
+        |> Gen.map (fun i -> (float i / float System.Int32.MaxValue) * size + min)
+
+    let reasonableFloat = floatBetween -10000.0 10000.0
 
     let reasonableInt =
         Gen.choose(-10000,10000)
@@ -267,10 +269,6 @@ module Lala =
         reasonableFloat
         |> Gen.map (fun v -> v % Constant.PiTimesTwo)
 
-    let floatBetween min max =
-        let size = max - min
-        Arb.generate<uint32>
-        |> Gen.map (fun i -> (float i / float System.UInt32.MaxValue) * size + min)
         
     let arbV2d (b : Box2d) =
         gen {
@@ -326,8 +324,8 @@ module Lala =
         | ArbitraryDir of V3d
 
     type RotModifier =
-        | None
-        | Roll of float
+        // | None
+        // | Roll of float
         | Normal
         | NormalAndRoll of float
 
@@ -337,9 +335,77 @@ module Lala =
         | InVolume of Box3d
 
     type NoiseKind =
-        | Offset
+        | Offset of float
         | Garbage
         | Mismatch
+
+    let genNoiseKind (str : float) =
+        gen {
+            let! i = Gen.choose(0,7)
+            match i with
+            | _ -> return []
+            // | 1 -> return [Offset str]
+            // | 2 -> return [Garbage]
+            // | 3 -> return [Mismatch]
+            // | 4 -> return [Offset str;Garbage]
+            // | 5 -> return [Offset str;Mismatch]
+            // | 6 -> return [Garbage;Mismatch]
+            // | 7 -> return [Offset str;Garbage;Mismatch]
+            // | _ -> return failwith "no"
+        }
+
+    let applyNoise (prob : float) (kind : NoiseKind) (ms : (V2d*V2d)[]) =
+        gen {
+            let! fs = Gen.arrayOfLength ms.Length (floatBetween 0.0 1.0)
+            match kind with 
+            | Offset off ->
+                let! ls  = Gen.arrayOfLength ms.Length (floatBetween 0.0 off)
+                let! ans = Gen.arrayOfLength ms.Length reasonableAngleRad
+                let offs = 
+                    Array.map2 (fun (a : float) l ->
+                        V2d(cos a, sin a) * l
+                    ) ans ls
+                return             
+                    Array.map3 (fun f (l,r) off -> 
+                        if f <= prob then
+                            if f <= prob * 0.5 then
+                                (l+off,r)
+                            else
+                                (l,r+off)                        
+                        else (l,r)                    
+                    ) fs ms offs
+            | Garbage -> 
+                let! garbs = Gen.arrayOfLength ms.Length (arbV2d (Box2d(V2d.NN,V2d.II)))
+                return
+                    Array.map3 (fun garb (l,r) f -> 
+                        if f <= prob then
+                            if f <= prob * 0.5 then
+                                (garb,r)
+                            else
+                                (l,garb)                        
+                        else (l,r)
+                    ) garbs ms fs
+            | Mismatch ->
+                let! mis = Gen.arrayOfLength ms.Length (Gen.choose(0,ms.Length-1))
+                let mutable tofix = MapExt.empty                    
+                let output = [|
+                    for i in 0..ms.Length-1 do
+                        let (l,r) = ms.[i]
+                        let f = fs.[i]
+                        if f <= prob then
+                            let mi = mis.[i]
+                            tofix <- tofix |> MapExt.add mi i
+                            yield (l,snd ms.[mi])
+                        else yield (l,r)              
+                |]
+                let noisy = [|
+                    for i in 0..output.Length-1 do
+                        match tofix |> MapExt.tryFind i with
+                        | Option.None -> yield output.[i]
+                        | Some mi -> yield (fst ms.[i],snd ms.[mi])
+                |]
+                return noisy
+        }        
 
     let arbLineWithin (box : Box3d) =
         gen {
@@ -379,12 +445,12 @@ module Lala =
 
     let genRotModifier =
         gen {
-            let! i = Gen.choose(0,3)
+            let! i = Gen.choose(2,3)
             match i with
-            | 0 -> return RotModifier.None
-            | 1 -> 
-                let! a = reasonableAngleRad
-                return Roll a
+            // | 0 -> return RotModifier.None
+            // | 1 -> 
+            //     let! a = reasonableAngleRad
+            //     return Roll a
             | 2 -> return Normal
             | 3 -> 
                 let! a = reasonableAngleRad
@@ -416,7 +482,70 @@ module Lala =
                 return failwith "no"
         }
 
-    let applyTrans (c0 : Camera) (t : ArbCameraTrans) =
+    let dataBounds (cam : Camera) (scale : float) = 
+        let c = cam.Location + cam.Forward * 2.0 * scale
+        let e = V3d.III*scale
+        Box3d(c-e,c+e)
+
+    let genArbPoints (cam : Camera) (scale : float) =
+        gen {
+            let bounds = dataBounds cam scale
+            let! i = Gen.choose(0,2)
+            match i with
+            | 0 -> 
+                let! l = arbLineWithin bounds
+                return AlongLine l
+            | 1 -> 
+                let! q = arbQuadFacing45 cam scale             
+                return InQuad q
+            | 2 -> 
+                return InVolume bounds            
+        }
+
+    let genPoints (a : ArbPoints) (ct : int) =
+        gen {
+            match a with
+            | AlongLine l -> 
+                let ct = ct/4
+                let r = Ray3d(l.P0, (l.P1-l.P0).Normalized)
+                let t1 = r.GetTOfProjectedPoint l.P1
+                let! ts = Gen.arrayOfLength ct (floatBetween 0.0 t1)
+                return ts |> Array.map r.GetPointOnRay
+            | InQuad q -> 
+                let ct = ct/2
+                let p = q.ComputeCentroid()
+                let n = q.Normal             |> Vec.normalize
+                let dy = Vec.cross n V3d.OOI |> Vec.normalize
+                let dx = Vec.cross dy n      |> Vec.normalize
+                let t = Euclidean3d(Rot3d.FromM33d(M33d.FromCols(dx,dy,n)), p)
+
+                let qp0 = t.InvTransformPos(q.P0)
+                let qp1 = t.InvTransformPos(q.P1)
+                let qp2 = t.InvTransformPos(q.P2)
+                let qp3 = t.InvTransformPos(q.P3)
+
+                let minx = min (min (min qp0.X qp1.X) qp2.X) qp3.X
+                let maxx = max (max (max qp0.X qp1.X) qp2.X) qp3.X
+                let miny = min (min (min qp0.Y qp1.Y) qp2.Y) qp3.Y
+                let maxy = max (max (max qp0.Y qp1.Y) qp2.Y) qp3.Y
+
+                let qct = float ct/float 4 |> ceil |> int
+                let! bla = Gen.arrayOfLength qct (arbV3d (Box3d(V3d(minx,miny,0.0), V3d(0.0,0.0,0.0))))
+                let  bl  = bla |> Array.map t.TransformPos
+                let! bra = Gen.arrayOfLength qct (arbV3d (Box3d(V3d(0.0,miny,0.0), V3d(maxx,0.0,0.0))))
+                let  br  = bra |> Array.map t.TransformPos
+                let! tla = Gen.arrayOfLength qct (arbV3d (Box3d(V3d(minx,0.0,0.0), V3d(0.0,maxy,0.0))))
+                let  tl  = tla |> Array.map t.TransformPos
+                let! tra = Gen.arrayOfLength qct (arbV3d (Box3d(V3d(0.0,0.0,0.0), V3d(maxx,maxy,0.0))))
+                let  tr  = tra |> Array.map t.TransformPos
+                
+                return Array.concat [|bl;br;tr;tl|]
+            | InVolume box -> 
+                let! ps = Gen.arrayOfLength ct (arbV3d box)
+                return ps
+        }            
+
+    let applyTrans (t : ArbCameraTrans) (c0 : Camera) =
         match t with
         | ArbCameraTrans.None -> c0
         | AlongFw len -> 
@@ -429,35 +558,82 @@ module Lala =
             let p1 = c0.Location + v
             { c0 with view = CameraView.lookAt p1 (p1 + c0.Forward) c0.Up }
 
-    let applyRot (c0 : Camera) (dataBb : Box3d) (r : RotModifier) =
+    let applyRot (dataBb : Box3d) (r : RotModifier) (c0 : Camera) =
         match r with
-        | None -> c0
+        // | None -> c0
+        // | Roll a -> 
+        //     let up1 = Rot3d(c0.Forward,a).TransformDir c0.Up
+        //     { c0 with view = CameraView.lookAt c0.Location (c0.Location + c0.Forward) up1 }
         | Normal -> 
             let fw1 = (c0.Location - dataBb.Center).Normalized
             { c0 with view = CameraView.lookAt c0.Location (c0.Location + fw1) c0.Up }
-        | Roll a -> 
-            let up1 = Rot3d(c0.Forward,a).TransformDir c0.Up
-            { c0 with view = CameraView.lookAt c0.Location (c0.Location + c0.Forward) up1 }
         | NormalAndRoll a -> 
             let fw1 = (c0.Location - dataBb.Center).Normalized
             let up1 = Rot3d(fw1,a).TransformDir c0.Up
             { c0 with view = CameraView.lookAt c0.Location (c0.Location + fw1) up1 }
 
-    let generate() =
-        gen {
-            let! scale = floatBetween 4.0 12.0            
+    type Scenario =
+        {   
+            cam0 : Camera
+            cam1 : Camera
+            matches : (V2d*V2d)[]
+            pts3d : V3d[]
 
-            let! p0 = arbPos
+            noiseprob : float
+            noise : list<NoiseKind>
+            points : ArbPoints
+            camtrans : ArbCameraTrans
+            camrot : RotModifier
+        }
+
+    let genScenario =
+        gen {
+            let! scale = floatBetween 4.0 12.0   
+            let pointcount = 64         
+            
+            let p0 = V3d.OOO
             let! t0 = arbPos
-            let u0 =  Vec.cross (Vec.cross p0 V3d.OOI) t0
+            let fw0 = (t0 - p0).Normalized
+            let nf = Trafo3d.FromNormalFrame(p0,fw0)
+            let u0 = nf.Backward.C0.XYZ.Normalized
             let cv0 = CameraView.lookAt p0 t0 u0
             let! proj0 = arbProjection
             let cam0 = { view = cv0; proj = proj0 }
+
+            let! apts = genArbPoints cam0 scale
+            let! pts3d = genPoints apts pointcount
+            let bb = dataBounds cam0 scale
+
             let! trans1 = genCameraTrans scale
             let! rot1 = genRotModifier 
             
-            return failwith ""
-        }
+            let cam1 = 
+                cam0 |> applyTrans trans1
+                     |> applyRot bb rot1
+            let obs0 =
+                pts3d |> Array.map (fun p -> Camera.projectUnsafe p cam0)
+            let obs1 =
+                pts3d |> Array.map (fun p -> Camera.projectUnsafe p cam1)
 
-    // let generate() =
-    //     let 
+            let! str = floatBetween 0.001 0.1
+            let! noise = genNoiseKind str
+            let! prob = floatBetween 0.001 0.5
+
+            let mutable ms = Array.zip obs0 obs1
+            for n in noise do
+                let! nm = applyNoise prob n ms
+                ms <- nm
+
+            return {
+                    cam0        = cam0
+                    cam1        = cam1
+                    matches     = ms
+                    pts3d       = pts3d
+
+                    points      = apts
+                    camtrans    = trans1
+                    camrot      = rot1
+                    noiseprob   = prob
+                    noise       = noise
+                }
+        }
