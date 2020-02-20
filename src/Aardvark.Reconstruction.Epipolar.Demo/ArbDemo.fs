@@ -36,29 +36,23 @@ module ArbDemo =
                 //let (c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d) : Camera * Camera * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V3d>> * list<V3d * V3d * list<V3d>> = File.readAllBytes @"C:\temp\dump.bin" |> Pickler.pickler.UnPickle
                 let c0 = scene.cam0
                 let c1 = scene.cam1
+                let pMatches =
+                    Array.zip scene.pts3d scene.matches
+                    |> Array.map (fun (p3d,(l,r)) -> r,p3d)
                 let scale = (c1.Location - c0.Location).Length
                 Log.stop()
 
                 Log.startTimed("Calculate epipolar")
-                let fMatches = 
-                    List.fold2 (fun r (_,_,os0) (_,_,os1) -> (List.zip os0 os1)@r ) [] Fpoints2dc0 Fpoints2dc1
-                let hMatches =
-                    List.fold2 (fun r (_,_,os0) (_,_,os1) -> (List.zip os0 os1)@r ) [] Hpoints2dc0 Hpoints2dc1
-                let p3d = (Hpoints3d@Fpoints3d)
-                let pMatches = 
-                    List.zip (Hpoints2dc1@Fpoints2dc1) p3d
-                    |> List.collect ( fun ((_,_,fs),(_,_,ps)) -> List.zip fs ps)
-                    |> List.toArray
 
-
-                let hom = Homography.recover (hMatches |> List.toArray)
+                let matches = scene.matches
+                let hom = Homography.recover matches
                 let hmot =
                     match hom with
                     | None -> 
                         Log.warn "No homography possible"
                         [CameraMotion.Zero]
                     | Some h -> 
-                        match Homography.decompose h c0.proj c1.proj [] with //hMatches with
+                        match Homography.decompose h c0.proj c1.proj [] with
                         | [] -> 
                             Log.warn "Homography decompose failed"
                             [CameraMotion.Zero]
@@ -66,9 +60,8 @@ module ArbDemo =
                             Log.line "Decomposed Homography into %d motions" hs.Length
                             hs |> List.map (fun m -> m * scale)
                 
-                let fund = FundamentalMatrix.recover 1E-6 (fMatches |> List.toArray)
                 let fmot =
-                    match fund with
+                    match FundamentalMatrix.recover 1E-4 matches with
                     | None -> 
                         Log.warn "No fundamental possible"
                         [CameraMotion.Zero]
@@ -100,9 +93,9 @@ module ArbDemo =
                         (c |> Camera.unproject o).GetMinimalDistanceTo(p)
                     )
 
-                if fu ch > 1E-6 then Log.error "fFFFFFFUUUUUUUUUUU ch"
-                if fu cf > 1E-6 then Log.error "fFFFFFFUUUUUUUUUUU cf"
-                if fu cp > 1E-6 then Log.error "fFFFFFFUUUUUUUUUUU cp"
+                if fu ch > 1E-6 then Log.error "bad ch"
+                if fu cf > 1E-6 then Log.error "bad cf"
+                if fu cp > 1E-6 then Log.error "bad cp"
 
                 
                 Log.line "cf %f" (Camera.sameness c1 cf)
@@ -110,7 +103,7 @@ module ArbDemo =
                 Log.line "cp %f" (Camera.sameness c1 cp)
 
                 Log.stop()
-                Generate.mkSg p3d,c0,c1,cp,ch,cf,Ppoints2dc0,Hpoints2dc1,Fpoints2dc1,Ppoints2dc1
+                failwith ""
             )
     
         let sg = Mod.map          (fun (x,_,_,_,_,_,_,_,_,_) -> x) stuff
