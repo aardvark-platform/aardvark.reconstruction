@@ -16,12 +16,15 @@ open Aardvark.Reconstruction
 module Testy =
 
     let getBestFittingMot (c0 : Camera) (c1 : Camera) (mots : list<CameraMotion>) =
-        mots |> List.maxBy (fun mot -> 
-            let r = c0 + mot
-            let dir = (1.0 + Vec.dot c1.Forward r.Forward)/2.0 * 1000.0
-            let pos = -Vec.length (c1.Location - r.Location)
-            (dir, pos)
-        )
+        match mots with
+        | [] -> None
+        | _ -> 
+            mots |> List.maxBy (fun mot -> 
+                let r = c0 + mot
+                let dir = (1.0 + Vec.dot c1.Forward r.Forward)/2.0 * 1000.0
+                let pos = -Vec.length (c1.Location - r.Location)
+                (dir, pos)
+            ) |> Some
 
     let fundamentalChecker() =
         Aardvark.Init()
@@ -143,7 +146,7 @@ module Testy =
                 let scale = scale.GetValue(t)
                 match FundamentalMatrix.decompose F c0.proj c1.proj [] with
                 | [] -> None
-                | mots -> getBestFittingMot c0 c1 mots |> Some
+                | mots -> getBestFittingMot c0 c1 mots
             )
         let c1e = 
             Mod.custom (fun t -> 

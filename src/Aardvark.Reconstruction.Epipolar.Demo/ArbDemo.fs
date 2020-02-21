@@ -8,6 +8,7 @@ open Aardvark.Rendering.Text
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.Application
+open Aardvark.Application.Utilities
 open Aardvark.Application.Slim
 open FShade
 open Aardvark.Reconstruction
@@ -15,116 +16,42 @@ open FsCheck
 
 [<AutoOpen>]
 module ArbDemo = 
-    let singleArbTest() =
+    open Lala
 
-        Ag.initialize()
-        Aardvark.Init()
-        let win = window {
-            backend Backend.GL
-        }
-        let rand = RandomSystem()
+    let sg3d (s : Scenario) =
+        let pts3d = 
+            s.pts3d
+            |> Array.map (fun p -> 
+                let s = Sphere3d(p,0.05)
+                IndexedGeometryPrimitives.solidSubdivisionSphere s 2 C4b.Red
+                |> Sg.ofIndexedGeometry
+            ) 
+            |> Sg.ofArray
+            |> Sg.shader {
+                do! DefaultSurfaces.trafo
+                do! DefaultSurfaces.vertexColor
+                do! DefaultSurfaces.simpleLighting            
+            }
+        
+        Sg.ofList [pts3d]
 
-        let counter = Mod.init 0
-
-        let stuff =
-            counter |> Mod.map ( fun _ -> 
-                Log.startTimed("Generate Scenario")
-
-                let scene = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genScenario 
-
-                //let c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d = Generate.randomScene()
-                //let (c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d) : Camera * Camera * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V3d>> * list<V3d * V3d * list<V3d>> = File.readAllBytes @"C:\temp\dump.bin" |> Pickler.pickler.UnPickle
-                let c0 = scene.cam0
-                let c1 = scene.cam1
-                let pMatches =
-                    Array.zip scene.pts3d scene.matches
-                    |> Array.map (fun (p3d,(l,r)) -> r,p3d)
-                let scale = (c1.Location - c0.Location).Length
-                Log.stop()
-
-                Log.startTimed("Calculate epipolar")
-
-                let matches = scene.matches
-                let hom = Homography.recover matches
-                let hmot =
-                    match hom with
-                    | None -> 
-                        Log.warn "No homography possible"
-                        [CameraMotion.Zero]
-                    | Some h -> 
-                        match Homography.decompose h c0.proj c1.proj [] with
-                        | [] -> 
-                            Log.warn "Homography decompose failed"
-                            [CameraMotion.Zero]
-                        | hs -> 
-                            Log.line "Decomposed Homography into %d motions" hs.Length
-                            hs |> List.map (fun m -> m * scale)
-                
-                let fmot =
-                    match FundamentalMatrix.recover 1E-4 matches with
-                    | None -> 
-                        Log.warn "No fundamental possible"
-                        [CameraMotion.Zero]
-                    | Some (F,lsbr,rsbl) -> 
-                        Log.line "lsbr %A" lsbr
-                        Log.line "rsbl %A" rsbl
-                        match FundamentalMatrix.decompose F c0.proj c1.proj [] with
-                        | [] -> 
-                            Log.warn "Fundamental decompose failed"
-                            [CameraMotion.Zero]
-                        | fs -> 
-                            Log.line "Decomposed Fundamental into %d motions" fs.Length
-                            fs |> List.map (fun m -> m * scale)
-
-                let cp =
-                    match P6P.recover pMatches with
-                    | None -> 
-                        Log.line "P6P failed"
-                        c0
-                    | Some cp -> 
-                        Log.line "Recovered P6P camera"
-                        cp
-
-                let cf = { (c0 + (getBestFittingMot c0 c1 fmot)) with proj = c1.proj }
-                let ch = { (c0 + (getBestFittingMot c0 c1 hmot)) with proj = c1.proj }
-
-                let fu c = 
-                    pMatches |> Array.sumBy (fun (o,p) -> 
-                        (c |> Camera.unproject o).GetMinimalDistanceTo(p)
-                    )
-
-                if fu ch > 1E-6 then Log.error "bad ch"
-                if fu cf > 1E-6 then Log.error "bad cf"
-                if fu cp > 1E-6 then Log.error "bad cp"
-
-                
-                Log.line "cf %f" (Camera.sameness c1 cf)
-                Log.line "ch %f" (Camera.sameness c1 ch)
-                Log.line "cp %f" (Camera.sameness c1 cp)
-
-                Log.stop()
-                failwith ""
-            )
-    
-        let sg = Mod.map          (fun (x,_,_,_,_,_,_,_,_,_) -> x) stuff
-        let c0 = Mod.map          (fun (_,x,_,_,_,_,_,_,_,_) -> x) stuff
-        let c1 = Mod.map          (fun (_,_,x,_,_,_,_,_,_,_) -> x) stuff
-        let cp = Mod.map          (fun (_,_,_,x,_,_,_,_,_,_) -> x) stuff
-        let ch = Mod.map          (fun (_,_,_,_,x,_,_,_,_,_) -> x) stuff
-        let cf = Mod.map          (fun (_,_,_,_,_,x,_,_,_,_) -> x) stuff
-        let Ppoints2dc0 = Mod.map (fun (_,_,_,_,_,_,x,_,_,_) -> x) stuff
-        let Hpoints2dc1 = Mod.map (fun (_,_,_,_,_,_,_,x,_,_) -> x) stuff
-        let Fpoints2dc1 = Mod.map (fun (_,_,_,_,_,_,_,_,x,_) -> x) stuff
-        let Ppoints2dc1 = Mod.map (fun (_,_,_,_,_,_,_,_,_,x) -> x) stuff
-    
+    let showScenario 
+        (win : ISimpleRenderWindow)
+        (scenario : IMod<Scenario>) 
+        (cf : IMod<Option<Camera>>) 
+        (ch : IMod<Option<Camera>>) 
+        (cp : IMod<Option<Camera>>) =
+        
+        let c0 = scenario |> Mod.map (fun s -> s.cam0)
+        let c1 = scenario |> Mod.map (fun s -> s.cam1)
         Log.startTimed("Show")
 
         let vpo = Mod.map2 (fun (v : Trafo3d[]) (p : Trafo3d[]) -> v.[0] * p.[0]) win.View win.Proj
         let vp0 = c0 |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
         let vp1 = c1 |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
-        let vph = ch |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
-        let vpf = cf |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
-        let vpp = cp |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
+        let vph = ch |> Mod.map(Option.map(Camera.viewProjTrafo 0.1 100.0))
+        let vpf = cf |> Mod.map(Option.map(Camera.viewProjTrafo 0.1 100.0))
+        let vpp = cp |> Mod.map(Option.map(Camera.viewProjTrafo 0.1 100.0))
 
         let current = Mod.init 0
         win.Keyboard.DownWithRepeats.Values.Add (fun k -> 
@@ -139,8 +66,6 @@ module ArbDemo =
                 | 4 -> Log.line "Camera 1 fundamental"
                 | 5 -> Log.line "Camera 1 P6P"
                 | _ -> ()
-            | Keys.Enter -> 
-                transact (fun _ -> counter.Value <- counter.Value + 1)
             | _ -> ()
         )
 
@@ -149,9 +74,9 @@ module ArbDemo =
             | 0 -> vpo
             | 1 -> vp0
             | 2 -> vp1
-            | 3 -> vph
-            | 4 -> vpf
-            | 5 -> vpp
+            | 3 -> Mod.map2 (fun o t -> t |> Option.defaultValue o) vpo vph
+            | 4 -> Mod.map2 (fun o t -> t |> Option.defaultValue o) vpo vpf
+            | 5 -> Mod.map2 (fun o t -> t |> Option.defaultValue o) vpo vpp
             | _ -> vpo
         )
 
@@ -173,7 +98,8 @@ module ArbDemo =
             |> Sg.projTrafo ~~Trafo3d.Identity
 
         let sg3d = 
-            sg
+            scenario
+            |> Mod.map sg3d
             |> Sg.dynamic
             |> Sg.viewTrafo vt
             |> Sg.projTrafo (Mod.constant Trafo3d.Identity)
@@ -181,24 +107,20 @@ module ArbDemo =
         let ftrSg = 
             Mod.custom (fun t -> 
                 let current = current.GetValue(t)
+                let s = scenario.GetValue(t)
 
-                let Ppoints2dc0 = Ppoints2dc0.GetValue(t)
-                let Hpoints2dc1 = Hpoints2dc1.GetValue(t)
-                let Fpoints2dc1 = Fpoints2dc1.GetValue(t)
-                let Ppoints2dc1 = Ppoints2dc1.GetValue(t)
+                let ls = s.matches |> Array.map fst
+                let rs = s.matches |> Array.map snd
                 let obs = 
                     match current with 
-                    | 1 -> Ppoints2dc0
-                    | 2 | 5 -> Ppoints2dc1 
-                    | 4 -> Fpoints2dc1
-                    | 3 -> Hpoints2dc1
-                    | _ -> []
+                    | 1 -> ls
+                    | 2 | 3 | 4 | 5 -> rs
+                    | _ -> [||]
                 match obs with 
-                | [] -> Sg.empty 
+                | [||] -> Sg.empty 
                 | _ -> 
-                    let obs = obs |> List.collect (fun (_,_,v) -> v)
                     let s1 = 
-                        let ps = obs|> List.toArray |> Array.map (fun p -> V3d(p.X,p.Y,-1.0))
+                        let ps = obs |> Array.map (fun p -> V3d(p.X,p.Y,-1.0))
                         let cs = Array.create ps.Length C4b.Black
                         IndexedGeometry(
                             Mode = IndexedGeometryMode.PointList,
@@ -215,8 +137,8 @@ module ArbDemo =
                           |> Sg.uniform "PointSize" (Mod.constant 3.5)
                           |> Sg.depthTest (Mod.constant DepthTestMode.None)
                     let s2 = 
-                        let ps = obs |> List.toArray |> Array.map (fun p -> V3d(p.X,p.Y,-1.0))
-                        let cs = Array.create ps.Length C4b.White
+                        let ps = obs |> Array.map (fun p -> V3d(p.X,p.Y,-1.0))
+                        let cs = Array.create ps.Length C4b.Black
                         IndexedGeometry(
                             Mode = IndexedGeometryMode.PointList,
                             IndexedAttributes = SymDict.ofList [
@@ -245,11 +167,11 @@ module ArbDemo =
                 let cp = cp.GetValue(t)
                 if current = 0 then
                     [
-                        Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.49 c0 C4b.Blue
-                        Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.49 c1 C4b.Blue
-                        Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.50 ch C4b.Green
-                        Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.51 cf C4b.Red
-                        Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.52 cp (C4b(100,255,255,255))
+                        yield Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.49 c0 C4b.Blue
+                        yield Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.49 c1 C4b.Blue
+                        yield! ch |> Option.map(fun c -> Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.50 c C4b.Green             )   |> Option.toList
+                        yield! ch |> Option.map(fun c -> Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.51 c C4b.Red               )   |> Option.toList
+                        yield! ch |> Option.map(fun c -> Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.52 c (C4b(100,255,255,255)))   |> Option.toList
                     ] |> Sg.ofList
                 else Sg.empty
             ) |> Sg.dynamic
@@ -265,4 +187,113 @@ module ArbDemo =
         win.Scene <- sg
         Log.stop()
         win.Run()
+
+    let singleArbTest() =
+
+        Ag.initialize()
+        Aardvark.Init()
+        let win = window {
+            backend Backend.GL
+        }
+        let rand = RandomSystem()
+
+        let counter = Mod.init 0
+        win.Keyboard.DownWithRepeats.Values.Add (function 
+            | Keys.Enter -> 
+                transact (fun _ -> counter.Value <- counter.Value + 1)
+            | _ -> ()
+        )
         
+        let stuff =
+            counter |> Mod.map ( fun _ -> 
+                Log.startTimed("Generate Scenario")
+
+                let scene = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genScenario 
+
+                Log.line "Scene:\n"
+                Log.line "C0:%A" scene.cam0.Location
+                Log.line "C1Trans:%A" scene.camtrans
+                Log.line "C1Rot:%A" scene.camrot
+                Log.line "pts3d:%A" scene.points
+                //let c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d = Generate.randomScene()
+                //let (c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d) : Camera * Camera * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V3d>> * list<V3d * V3d * list<V3d>> = File.readAllBytes @"C:\temp\dump.bin" |> Pickler.pickler.UnPickle
+                let c0 = scene.cam0
+                let c1 = scene.cam1
+                let pMatches =
+                    Array.zip scene.pts3d scene.matches
+                    |> Array.map (fun (p3d,(l,r)) -> r,p3d)
+                let scale = (c1.Location - c0.Location).Length
+                Log.stop()
+
+                Log.startTimed("Calculate epipolar")
+
+                let matches = scene.matches
+                let hom = Homography.recover matches
+                let hmot =
+                    match hom with
+                    | None -> 
+                        Log.warn "No homography possible"
+                        []
+                    | Some h -> 
+                        match Homography.decompose h c0.proj c1.proj [] with
+                        | [] -> 
+                            Log.warn "Homography decompose failed"
+                            []
+                        | hs -> 
+                            Log.line "Decomposed Homography into %d motions" hs.Length
+                            hs |> List.map (fun m -> m * scale)
+                
+                let fmot =
+                    let f = FundamentalMatrix.recover 1E-4 matches
+                    match f with
+                    | None -> 
+                        Log.warn "No fundamental possible"
+                        []
+                    | Some (fund,lsbr,rsbl) -> 
+                        Log.line "lsbr %A" lsbr
+                        Log.line "rsbl %A" rsbl
+                        match FundamentalMatrix.decompose fund c0.proj c1.proj [] with
+                        | [] -> 
+                            Log.warn "Fundamental decompose failed"
+                            []
+                        | fs -> 
+                            Log.line "Decomposed Fundamental into %d motions" fs.Length
+                            fs |> List.map (fun m -> m * scale)
+
+                let cp : Option<Camera> =
+                    match P6P.recover pMatches with
+                    | None -> 
+                        Log.warn "P6P failed"
+                        None
+                    | Some cp -> 
+                        Log.line "Recovered P6P camera"
+                        Some cp
+
+                let cf = getBestFittingMot c0 c1 fmot |> Option.map (fun m -> { (c0 + m) with proj = c1.proj })
+                let ch = getBestFittingMot c0 c1 hmot |> Option.map (fun m -> { (c0 + m) with proj = c1.proj })
+
+                let fu c n = 
+                    match c with
+                    | None -> Log.warn "No camera: %s" n
+                    | Some c -> 
+                        let d = 
+                            pMatches |> Array.sumBy (fun (o,p) -> 
+                                (c |> Camera.unproject o).GetMinimalDistanceTo(p)
+                            )
+                        if d > 1E-0 then Log.error "bad cam: %s" n            
+                        Log.line "sameness %s %f" n (Camera.sameness c1 c)
+
+                fu ch "Homography"
+                fu cf "Fundamental"
+                fu cp "P6P"
+
+                Log.stop()
+                scene, cf, ch, cp
+            )
+    
+        let scene = Mod.map       (fun (x,_,_,_) -> x) stuff
+        let cf = Mod.map          (fun (_,x,_,_) -> x) stuff
+        let ch = Mod.map          (fun (_,_,x,_) -> x) stuff
+        let cp = Mod.map          (fun (_,_,_,x) -> x) stuff
+        
+        showScenario win scene cf ch cp

@@ -65,8 +65,8 @@ module Testy2 =
                 | Some cp -> 
                     cp
 
-            let ch = { (c0 + (getBestFittingMot c0 c1 hmot)) with proj = c1.proj }
-            let cf = { (c0 + (getBestFittingMot c0 c1 fmot)) with proj = c1.proj }
+            let ch = { (c0 + ((getBestFittingMot c0 c1 hmot)|> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
+            let cf = { (c0 + ((getBestFittingMot c0 c1 fmot)|> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
 
             if 
              not ( Camera.approxEqual 1E-4 c1 cp ) ||
@@ -297,8 +297,8 @@ module Testy2 =
                 | Some cp -> 
                     cp
 
-            let ch = { (c0 + (getBestFittingMot c0 c1 hmot)) with proj = c1.proj }
-            let cf = { (c0 + (getBestFittingMot c0 c1 fmot)) with proj = c1.proj }
+            let ch = { (c0 + ((getBestFittingMot c0 c1 hmot) |> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
+            let cf = { (c0 + ((getBestFittingMot c0 c1 fmot) |> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
 
             let pg = ( Camera.approxEqual 1E-4 c1 cp )
             let hg = ( Camera.approxEqual 1E-4 c1 ch )
@@ -401,8 +401,8 @@ module Testy2 =
                         Log.line "Recovered P6P camera"
                         cp
 
-                let cf = { (c0 + (getBestFittingMot c0 c1 fmot)) with proj = c1.proj }
-                let ch = { (c0 + (getBestFittingMot c0 c1 hmot)) with proj = c1.proj }
+                let cf = { (c0 + ((getBestFittingMot c0 c1 fmot) |> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
+                let ch = { (c0 + ((getBestFittingMot c0 c1 hmot) |> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
 
                 let fu c = 
                     pMatches |> Array.sumBy (fun (o,p) -> 

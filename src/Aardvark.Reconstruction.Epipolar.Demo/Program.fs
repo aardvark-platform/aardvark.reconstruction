@@ -19,11 +19,7 @@ module Test =
         //singleRenderTest()
         //runManyExamples()
         //runManyAndRenderIfBad()
-
-        
-        let res = Gen.eval 0 (Random.StdGen(235235235,56856869)) Lala.genScenario 
-        
-        Log.line "%A" res
+        ArbDemo.singleArbTest()
 
         printfn "Hello World from F#!"
         0 // return an integer exit code

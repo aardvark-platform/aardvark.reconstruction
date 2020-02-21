@@ -253,17 +253,20 @@ module Generate =
         c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d
 
 module Lala =
-    //let rand = RandomSystem()
+    let rand = RandomSystem()
 
     let floatBetween min max =
         let size = max - min
-        Gen.choose (0, System.Int32.MaxValue)
-        |> Gen.map (fun i -> (float i / float System.Int32.MaxValue) * size + min)
+        //Gen.choose (0, System.Int32.MaxValue)
+        gen {
+            return rand.UniformUInt()            
+        }
+        |> Gen.map (fun i -> (float (int i) / float System.Int32.MaxValue) * size + min)
 
     let reasonableFloat = floatBetween -10000.0 10000.0
 
-    let reasonableInt =
-        Gen.choose(-10000,10000)
+    // let reasonableInt =
+    //     Gen.choose(-10000,10000)
 
     let reasonableAngleRad =
         reasonableFloat
@@ -318,7 +321,7 @@ module Lala =
         }
 
     type ArbCameraTrans = 
-        | None
+        | No
         | AlongFw of float
         | InPlane of V2d
         | ArbitraryDir of V3d
@@ -463,7 +466,7 @@ module Lala =
         gen {
             let! i = Gen.choose(0,3)
             match i with
-            | 0 -> return ArbCameraTrans.None
+            | 0 -> return ArbCameraTrans.No
             | 1 -> 
                 let sh = scale/2.0
                 let! d = floatBetween -sh sh
@@ -547,7 +550,7 @@ module Lala =
 
     let applyTrans (t : ArbCameraTrans) (c0 : Camera) =
         match t with
-        | ArbCameraTrans.None -> c0
+        | ArbCameraTrans.No -> c0
         | AlongFw len -> 
             let p1 = c0.Location + c0.Forward * len
             { c0 with view = CameraView.lookAt p1 (p1 + c0.Forward) c0.Up }
