@@ -257,11 +257,12 @@ module Lala =
 
     let floatBetween min max =
         let size = max - min
-        //Gen.choose (0, System.Int32.MaxValue)
-        gen {
-            return rand.UniformUInt()            
-        }
-        |> Gen.map (fun i -> (float (int i) / float System.Int32.MaxValue) * size + min)
+        gen { return rand.UniformDouble() * size + min }
+        // //Gen.choose (0, System.Int32.MaxValue)
+        // gen {
+        //     return rand.UniformInt()            
+        // }
+        // |> Gen.map (fun i -> (float (abs i) / float System.Int32.MaxValue) * size + min)
 
     let reasonableFloat = floatBetween -10000.0 10000.0
 
@@ -306,12 +307,12 @@ module Lala =
 
     let arbProjection =
         gen {
-            let! aspect = floatBetween 0.7 2.6
-            let! focal = floatBetween 0.5 3.0
+            let! aspect = floatBetween 0.9 2.3
+            let! focal = floatBetween 0.8 2.4
             let! px = Gen.choose(320,7680)
             let! py = Gen.choose(240,4320)
             let sizes = V2i(px,py)
-            let! pp = arbV2d (Box2d(V2d(-0.5,-0.5),V2d(0.5,0.5)))
+            let! pp = arbV2d (Box2d(V2d(-0.05,-0.05),V2d(0.05,0.05)))
             return 
                 { Projection.identity with 
                     aspect = aspect 
@@ -412,10 +413,11 @@ module Lala =
 
     let arbLineWithin (box : Box3d) =
         gen {
-            let! o = arbV3d box
+            let! o = arbV3d (box.ShrunkBy(0.01))
             let! d = arbDir
-            let ray1 = Ray3d(o,d)
-            let ray0 = Ray3d(o,-d)
+            let step = 2.0 * (max (max box.Size.X box.Size.Y) box.Size.Z) * d
+            let ray1 = Ray3d(o + step, -d)
+            let ray0 = Ray3d(o - step,  d)
             let mutable t0 = 0.0
             box.Intersects(ray0,&t0) |> ignore
             let mutable t1 = 0.0
@@ -425,15 +427,17 @@ module Lala =
 
     let arbQuadFacing45 (cam : Camera) (scale : float) =
         gen {
-            let! cd = floatBetween scale (3.0*scale)
+            let! cd = floatBetween scale (2.0*scale)
             let c = cam.Location + cam.Forward * cd
-            let cone = Cone3d(cam.Location, cam.Forward, Constant.PiHalf)
+
+            let cone = Cone3d(cam.Location, cam.Forward, Constant.PiQuarter)
             let circ = cone.GetCircle(1.0)
             let! ra = reasonableAngleRad
             let! rr = floatBetween 0.0 circ.Radius
             let circ2world = circ.Plane.GetPlaneSpaceTransform()
             let p = V3d(rr*cos(ra),rr*sin(ra),0.0) |> circ2world.Forward.TransformPos
-            let n = (cam.Location - p).Normalized
+            let! cent = arbV3d (Box3d(cam.Location+V3d.NNN*0.1, cam.Location+V3d.III*0.1))
+            let n = (cent - p).Normalized
             
             let u = Vec.cross n V3d.OOI |> Vec.normalize |> ((*)scale)
             let v = Vec.cross u n       |> Vec.normalize |> ((*)scale)    
@@ -495,27 +499,29 @@ module Lala =
             let bounds = dataBounds cam scale
             let! i = Gen.choose(0,2)
             match i with
-            | 0 -> 
-                let! l = arbLineWithin bounds
-                return AlongLine l
             | 1 -> 
                 let! q = arbQuadFacing45 cam scale             
                 return InQuad q
+            | 0 -> 
+                let! l = arbLineWithin bounds
+                return AlongLine l
             | 2 -> 
                 return InVolume bounds            
+            | _ -> 
+                return failwith "no2"
         }
 
     let genPoints (a : ArbPoints) (ct : int) =
         gen {
             match a with
             | AlongLine l -> 
-                let ct = ct/4
+                let ct = ct/8
                 let r = Ray3d(l.P0, (l.P1-l.P0).Normalized)
                 let t1 = r.GetTOfProjectedPoint l.P1
                 let! ts = Gen.arrayOfLength ct (floatBetween 0.0 t1)
                 return ts |> Array.map r.GetPointOnRay
             | InQuad q -> 
-                let ct = ct/2
+                let ct = ct/4
                 let p = q.ComputeCentroid()
                 let n = q.Normal             |> Vec.normalize
                 let dy = Vec.cross n V3d.OOI |> Vec.normalize
@@ -543,8 +549,38 @@ module Lala =
                 let  tr  = tra |> Array.map t.TransformPos
                 
                 return Array.concat [|bl;br;tr;tl|]
-            | InVolume box -> 
-                let! ps = Gen.arrayOfLength ct (arbV3d box)
+            | InVolume b -> 
+                let bct = float ct/float 8 |> ceil |> int
+                let Nx = b.Min.X
+                let Ny = b.Min.Y
+                let Nz = b.Min.Z
+                let Ix = b.Max.X
+                let Iy = b.Max.Y
+                let Iz = b.Max.Z
+                let Ox = (Ix + Nx) / 2.0
+                let Oy = (Iy + Ny) / 2.0
+                let Oz = (Iz + Nz) / 2.0
+
+                let inline bb (x0 : float) y0 z0 (x1 : float) y1 z1 = Box3d(V3d(x0,y0,z0),V3d(x1,y1,z1))
+                let b0 = bb Nx Oy Nz Ox Iy Oz
+                let b1 = bb Nx Oy Oz Ox Iy Iz
+                let b2 = bb Ox Oy Oz Ix Iy Iz
+                let b3 = bb Ox Oy Nz Ix Iy Oz
+                let b4 = bb Nx Ny Nz Ox Oy Oz
+                let b5 = bb Nx Ny Oz Ox Oy Iz
+                let b6 = bb Ox Ny Oz Ix Oy Iz
+                let b7 = bb Ox Ny Nz Ix Oy Oz
+
+                let! b0a = Gen.arrayOfLength bct (arbV3d b0)
+                let! b1a = Gen.arrayOfLength bct (arbV3d b1)
+                let! b2a = Gen.arrayOfLength bct (arbV3d b2)
+                let! b3a = Gen.arrayOfLength bct (arbV3d b3)
+                let! b4a = Gen.arrayOfLength bct (arbV3d b4)
+                let! b5a = Gen.arrayOfLength bct (arbV3d b5)
+                let! b6a = Gen.arrayOfLength bct (arbV3d b6)
+                let! b7a = Gen.arrayOfLength bct (arbV3d b7)
+
+                let ps = Array.concat [|b0a; b1a; b2a; b3a; b4a; b5a; b6a; b7a|]
                 return ps
         }            
 
@@ -568,10 +604,10 @@ module Lala =
         //     let up1 = Rot3d(c0.Forward,a).TransformDir c0.Up
         //     { c0 with view = CameraView.lookAt c0.Location (c0.Location + c0.Forward) up1 }
         | Normal -> 
-            let fw1 = (c0.Location - dataBb.Center).Normalized
+            let fw1 = (dataBb.Center - c0.Location).Normalized
             { c0 with view = CameraView.lookAt c0.Location (c0.Location + fw1) c0.Up }
         | NormalAndRoll a -> 
-            let fw1 = (c0.Location - dataBb.Center).Normalized
+            let fw1 = (dataBb.Center - c0.Location).Normalized
             let up1 = Rot3d(fw1,a).TransformDir c0.Up
             { c0 with view = CameraView.lookAt c0.Location (c0.Location + fw1) up1 }
 
@@ -591,7 +627,7 @@ module Lala =
 
     let genScenario =
         gen {
-            let! scale = floatBetween 4.0 12.0   
+            let! scale = floatBetween 4.0 4.0   
             let pointcount = 64         
             
             let p0 = V3d.OOO

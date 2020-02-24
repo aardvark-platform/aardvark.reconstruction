@@ -169,12 +169,38 @@ module ArbDemo =
                     [
                         yield Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.49 c0 C4b.Blue
                         yield Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.49 c1 C4b.Blue
-                        yield! ch |> Option.map(fun c -> Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.50 c C4b.Green             )   |> Option.toList
+                        yield! cf |> Option.map(fun c -> Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.50 c C4b.Green             )   |> Option.toList
                         yield! ch |> Option.map(fun c -> Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.51 c C4b.Red               )   |> Option.toList
-                        yield! ch |> Option.map(fun c -> Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.52 c (C4b(100,255,255,255)))   |> Option.toList
+                        yield! cp |> Option.map(fun c -> Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.52 c (C4b(100,255,255,255)))   |> Option.toList
                     ] |> Sg.ofList
                 else Sg.empty
             ) |> Sg.dynamic
+
+    
+        // | AlongLine of Line3d
+        // | InQuad of Quad3d
+        // | InVolume of Box3d
+
+        let outlineSg =
+            scenario |> Mod.map (fun s -> 
+                match s.points with
+                | AlongLine l -> 
+                    IndexedGeometryPrimitives.line l C4b.Red
+                | InQuad q -> 
+                    IndexedGeometryPrimitives.quad' q.P0 q.P1 q.P2 q.P3 C4b.Red    
+                | InVolume b -> 
+                    IndexedGeometryPrimitives.Box.wireBox b C4b.Red            
+            )
+            |> Mod.map Sg.ofIndexedGeometry
+            |> Sg.dynamic
+            |> Sg.shader {
+                do! DefaultSurfaces.trafo
+                do! DefaultSurfaces.thickLine
+                do! DefaultSurfaces.vertexColor
+            }
+            |> Sg.uniform "LineWidth" ~~1.0
+            |> Sg.viewTrafo vt
+            |> Sg.projTrafo (Mod.constant Trafo3d.Identity)
 
         let sg = 
             Sg.ofList [
@@ -182,6 +208,7 @@ module ArbDemo =
                 ftrSg
                 sg3d
                 statusText
+                outlineSg
             ]
 
         win.Scene <- sg
@@ -211,7 +238,7 @@ module ArbDemo =
                 let scene = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genScenario 
 
                 Log.line "Scene:\n"
-                Log.line "C0:%A" scene.cam0.Location
+                Log.line "C0:%A" scene.cam0
                 Log.line "C1Trans:%A" scene.camtrans
                 Log.line "C1Rot:%A" scene.camrot
                 Log.line "pts3d:%A" scene.points
