@@ -110,7 +110,7 @@ module Homography =
         let K0 = Projection.toTrafo lIntern
         let hNorm = K1.Backward * H * K0.Forward
         
-        let eps = 1e-12
+        let eps = 1e-8
 
         //Log.warn "%A" hNorm.Det
 

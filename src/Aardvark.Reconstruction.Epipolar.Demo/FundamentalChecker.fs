@@ -22,8 +22,9 @@ module Testy =
             mots |> List.maxBy (fun mot -> 
                 let r = c0 + mot
                 let dir = (1.0 + Vec.dot c1.Forward r.Forward)/2.0 * 1000.0
+                let up = (1.0 + Vec.dot c1.Up r.Up)/2.0 * 1000.0
                 let pos = -Vec.length (c1.Location - r.Location)
-                (dir, pos)
+                (dir, up, pos)
             ) |> Some
 
     let fundamentalChecker() =

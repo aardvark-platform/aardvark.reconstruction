@@ -176,16 +176,15 @@ module ArbDemo =
                 else Sg.empty
             ) |> Sg.dynamic
 
-    
-        // | AlongLine of Line3d
-        // | InQuad of Quad3d
-        // | InVolume of Box3d
-
         let outlineSg =
             scenario |> Mod.map (fun s -> 
                 match s.points with
-                | AlongLine l -> 
-                    IndexedGeometryPrimitives.line l C4b.Red
+                | AlmostLinearQuad(q,f) -> 
+                    let q = flattenQuad q f
+                    IndexedGeometryPrimitives.quad' q.P0 q.P1 q.P2 q.P3 C4b.Yellow    
+                | AlmostFlatVolume(b,f) -> 
+                    let b = flattenBox b f
+                    IndexedGeometryPrimitives.Box.wireBox b C4b.Yellow
                 | InQuad q -> 
                     IndexedGeometryPrimitives.quad' q.P0 q.P1 q.P2 q.P3 C4b.Red    
                 | InVolume b -> 
@@ -238,7 +237,7 @@ module ArbDemo =
                 let scene = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genScenario 
 
                 Log.line "Scene:\n"
-                Log.line "C0:%A" scene.cam0
+                //Log.line "C0:%A" scene.cam0
                 Log.line "C1Trans:%A" scene.camtrans
                 Log.line "C1Rot:%A" scene.camrot
                 Log.line "pts3d:%A" scene.points
@@ -324,3 +323,91 @@ module ArbDemo =
         let cp = Mod.map          (fun (_,_,_,x) -> x) stuff
         
         showScenario win scene cf ch cp
+
+
+    let manyArbsAndRenderIfBad() =
+        let mutable bad = None
+        let tryRun() =
+            let scene = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genScenario 
+            let c0 = scene.cam0
+            let c1 = scene.cam1
+            let pMatches =
+                Array.zip scene.pts3d scene.matches
+                |> Array.map (fun (p3d,(l,r)) -> r,p3d)
+            let scale = (c1.Location - c0.Location).Length
+
+            let matches = scene.matches
+            let hom = Homography.recover matches
+            let hmot =
+                match hom with
+                | None -> 
+                    []
+                | Some h -> 
+                    match Homography.decompose h c0.proj c1.proj [] with
+                    | [] -> 
+                        []
+                    | hs -> 
+                        hs |> List.map (fun m -> m * scale)
+            
+            let fmot =
+                let f = FundamentalMatrix.recover 1E-4 matches
+                match f with
+                | None -> 
+                    []
+                | Some (fund,lsbr,rsbl) -> 
+                    match FundamentalMatrix.decompose fund c0.proj c1.proj [] with
+                    | [] -> 
+                        []
+                    | fs -> 
+                        fs |> List.map (fun m -> m * scale)
+
+            let cp : Option<Camera> =
+                match P6P.recover pMatches with
+                | None -> 
+                    None
+                | Some cp -> 
+                    Some cp
+
+            let cf = getBestFittingMot c0 c1 fmot |> Option.map (fun m -> { (c0 + m) with proj = c1.proj })
+            let ch = getBestFittingMot c0 c1 hmot |> Option.map (fun m -> { (c0 + m) with proj = c1.proj })
+
+            let mutable testy = 0
+            let fu c n = 
+                match c with
+                | None -> ()
+                | Some c -> 
+                    let d = 
+                        pMatches |> Array.sumBy (fun (o,p) -> 
+                            (c |> Camera.unproject o).GetMinimalDistanceTo(p)
+                        )
+                    if d > 1E-1 then testy <- testy+1
+
+            fu ch "Homography"
+            fu cf "Fundamental"
+            //fu cp "P6P"
+
+            if testy >= 2 then 
+                Log.error "bad found:%A" scene
+                bad <- Some (scene, cf, ch, cp)
+
+        let mutable ct = 0
+        let max = 10000
+        Log.startTimed "Running baddies"
+        while bad |> Option.isNone do
+            Report.Progress(float ct/float max)
+            tryRun()
+            ct <- ct+1
+        Report.Progress(1.0)
+        Log.stop()        
+        if bad |> Option.isNone then Log.line "juhu"
+        else
+            Ag.initialize()
+            Aardvark.Init()
+            let win = window {
+                backend Backend.GL
+            }
+
+            Log.error "bad found:%A" ct
+            let (scene, cf, ch, cp) = bad |> Option.get
+
+            showScenario win ~~scene ~~cf ~~ch ~~cp

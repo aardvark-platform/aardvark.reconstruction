@@ -328,14 +328,14 @@ module Lala =
         | ArbitraryDir of V3d
 
     type RotModifier =
-        // | None
-        // | Roll of float
+        | Not
         | Normal
         | NormalAndRoll of float
 
     type ArbPoints =
-        | AlongLine of Line3d
+        | AlmostLinearQuad of Quad3d * float
         | InQuad of Quad3d
+        | AlmostFlatVolume of Box3d * float
         | InVolume of Box3d
 
     type NoiseKind =
@@ -450,11 +450,12 @@ module Lala =
             return Quad3d(p0,p1,p2,p3)
         }
 
+
     let genRotModifier =
         gen {
-            let! i = Gen.choose(2,3)
+            let! i = Gen.choose(1,3)
             match i with
-            // | 0 -> return RotModifier.None
+            | 1 -> return RotModifier.Not
             // | 1 -> 
             //     let! a = reasonableAngleRad
             //     return Roll a
@@ -497,29 +498,69 @@ module Lala =
     let genArbPoints (cam : Camera) (scale : float) =
         gen {
             let bounds = dataBounds cam scale
-            let! i = Gen.choose(0,2)
+            let! i = Gen.choose(0,3)
             match i with
+            | 0 -> 
+                let! q = arbQuadFacing45 cam scale 
+                let! t = floatBetween 0.01 0.4
+                return AlmostLinearQuad(q,t) 
             | 1 -> 
                 let! q = arbQuadFacing45 cam scale             
-                return InQuad q
-            | 0 -> 
-                let! l = arbLineWithin bounds
-                return AlongLine l
+                return InQuad q     
             | 2 -> 
-                return InVolume bounds            
+                let! t = floatBetween 0.001 0.4
+                return AlmostFlatVolume(bounds,t)    
+            | 3 -> 
+                return InVolume bounds    
             | _ -> 
                 return failwith "no2"
         }
 
-    let genPoints (a : ArbPoints) (ct : int) =
+    let flattenQuad (q : Quad3d) (f : float) =
+        
+        let p = q.ComputeCentroid()
+        let n = q.Normal             |> Vec.normalize
+        let dy = Vec.cross n V3d.OOI |> Vec.normalize
+        let dx = Vec.cross dy n      |> Vec.normalize
+        let t = Euclidean3d(Rot3d.FromM33d(M33d.FromCols(dx,dy,n)), p)
+
+        let qp0 = t.InvTransformPos(q.P0)
+        let qp1 = t.InvTransformPos(q.P1)
+        let qp2 = t.InvTransformPos(q.P2)
+        let qp3 = t.InvTransformPos(q.P3)
+
+        let minx = min (min (min qp0.X qp1.X) qp2.X) qp3.X
+        let maxx = max (max (max qp0.X qp1.X) qp2.X) qp3.X
+        let miny = min (min (min qp0.Y qp1.Y) qp2.Y) qp3.Y
+        let maxy = max (max (max qp0.Y qp1.Y) qp2.Y) qp3.Y
+
+        let rady = (maxy - miny)/2.0
+        let cy = (miny + maxy)/2.0
+        let newminy = cy - f*rady
+        let newmaxy = cy + f*rady
+
+        let np0 = V3d(minx,newminy,0.0) |> t.TransformPos
+        let np1 = V3d(minx,newmaxy,0.0) |> t.TransformPos
+        let np2 = V3d(maxx,newmaxy,0.0) |> t.TransformPos
+        let np3 = V3d(maxx,newminy,0.0) |> t.TransformPos
+
+        let nq = Quad3d(np0,np1,np2,np3)
+        nq
+
+    let flattenBox (b : Box3d) (f : float) =
+        let s = V3d(f,1.0,1.0)
+        b.ScaledFromCenterBy(s)
+
+    let rec genPoints (a : ArbPoints) (ct : int) =
         gen {
             match a with
-            | AlongLine l -> 
-                let ct = ct/8
-                let r = Ray3d(l.P0, (l.P1-l.P0).Normalized)
-                let t1 = r.GetTOfProjectedPoint l.P1
-                let! ts = Gen.arrayOfLength ct (floatBetween 0.0 t1)
-                return ts |> Array.map r.GetPointOnRay
+            | AlmostLinearQuad(q,lineness) ->   
+                let nq = flattenQuad q lineness 
+                return! genPoints (InQuad nq) ct
+
+            | AlmostFlatVolume(b,flatness) -> 
+                let nb = flattenBox b flatness
+                return! genPoints (InVolume nb) ct
             | InQuad q -> 
                 let ct = ct/4
                 let p = q.ComputeCentroid()
@@ -599,10 +640,10 @@ module Lala =
 
     let applyRot (dataBb : Box3d) (r : RotModifier) (c0 : Camera) =
         match r with
-        // | None -> c0
         // | Roll a -> 
         //     let up1 = Rot3d(c0.Forward,a).TransformDir c0.Up
         //     { c0 with view = CameraView.lookAt c0.Location (c0.Location + c0.Forward) up1 }
+        | Not -> c0
         | Normal -> 
             let fw1 = (dataBb.Center - c0.Location).Normalized
             { c0 with view = CameraView.lookAt c0.Location (c0.Location + fw1) c0.Up }
@@ -631,7 +672,8 @@ module Lala =
             let pointcount = 64         
             
             let p0 = V3d.OOO
-            let! t0 = arbPos
+            //let! t0 = arbPos
+            let t0 = V3d.IOO
             let fw0 = (t0 - p0).Normalized
             let nf = Trafo3d.FromNormalFrame(p0,fw0)
             let u0 = nf.Backward.C0.XYZ.Normalized
