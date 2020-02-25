@@ -255,7 +255,7 @@ module ArbDemo =
                 let matches = scene.matches
                 let hom = Homography.recover matches
                 let hmot =
-                    match None with //hom with
+                    match hom with
                     | None -> 
                         Log.warn "No homography possible"
                         []

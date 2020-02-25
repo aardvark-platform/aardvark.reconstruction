@@ -502,13 +502,13 @@ module Lala =
             match i with
             | 0 -> 
                 let! q = arbQuadFacing45 cam scale 
-                let! t = floatBetween 0.01 0.4
+                let! t = floatBetween 0.001 0.2
                 return AlmostLinearQuad(q,t) 
             | 1 -> 
                 let! q = arbQuadFacing45 cam scale             
                 return InQuad q     
             | 2 -> 
-                let! t = floatBetween 0.001 0.4
+                let! t = floatBetween 0.0001 0.2
                 return AlmostFlatVolume(bounds,t)    
             | 3 -> 
                 return InVolume bounds    

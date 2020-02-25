@@ -83,8 +83,8 @@ module FundamentalMatrix =
                             S.[2,2] <- 0.0
                             let Fhrt = U * S * Vt2
             
-                            let e1 = U.C2.XY / U.M22  
-                            let e0 = Vt2.R2.XY / Vt2.M22
+                            let e1 = if abs U.M22 < eps then V2d.Zero else U.C2.XY / U.M22  
+                            let e0 = if abs Vt2.M22 < eps then V2d.Zero else Vt2.R2.XY / Vt2.M22
 
                             f_out <- Fhrt
                             e0_out <- e0
@@ -147,7 +147,7 @@ module FundamentalMatrix =
             let eTe = En.Transposed * En
             
             let inline e i j =    En.[i-1,j-1]
-            let inline ete i j = eTe.[i-1,j-1]
+            let inline ete i j = min eTe.[i-1,j-1] 1.0
 
 
             let mutable b1 = sqrt (1.0 - ete 1 1)
