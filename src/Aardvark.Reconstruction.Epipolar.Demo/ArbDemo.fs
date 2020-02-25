@@ -121,7 +121,7 @@ module ArbDemo =
                 | _ -> 
                     let s1 = 
                         let ps = obs |> Array.map (fun p -> V3d(p.X,p.Y,-1.0))
-                        let cs = Array.create ps.Length C4b.Black
+                        let cs = Array.create ps.Length C4b.White
                         IndexedGeometry(
                             Mode = IndexedGeometryMode.PointList,
                             IndexedAttributes = SymDict.ofList [
@@ -235,14 +235,13 @@ module ArbDemo =
                 Log.startTimed("Generate Scenario")
 
                 let scene = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genScenario 
+                //let scene : Scenario = @"D:\temp\scene.bin" |> File.readAllBytes |> Pickler.pickler.UnPickle
 
                 Log.line "Scene:\n"
                 //Log.line "C0:%A" scene.cam0
                 Log.line "C1Trans:%A" scene.camtrans
                 Log.line "C1Rot:%A" scene.camrot
                 Log.line "pts3d:%A" scene.points
-                //let c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d = Generate.randomScene()
-                //let (c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d) : Camera * Camera * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V3d>> * list<V3d * V3d * list<V3d>> = File.readAllBytes @"C:\temp\dump.bin" |> Pickler.pickler.UnPickle
                 let c0 = scene.cam0
                 let c1 = scene.cam1
                 let pMatches =
@@ -256,7 +255,7 @@ module ArbDemo =
                 let matches = scene.matches
                 let hom = Homography.recover matches
                 let hmot =
-                    match hom with
+                    match None with //hom with
                     | None -> 
                         Log.warn "No homography possible"
                         []
@@ -388,12 +387,13 @@ module ArbDemo =
 
             if testy >= 2 then 
                 Log.error "bad found:%A" scene
+                //Pickler.pickler.Pickle(scene) |> File.writeAllBytes @"D:\temp\scene.bin"
                 bad <- Some (scene, cf, ch, cp)
 
         let mutable ct = 0
-        let max = 10000
+        let max = 100000
         Log.startTimed "Running baddies"
-        while bad |> Option.isNone do
+        while bad |> Option.isNone && ct < max do
             Report.Progress(float ct/float max)
             tryRun()
             ct <- ct+1

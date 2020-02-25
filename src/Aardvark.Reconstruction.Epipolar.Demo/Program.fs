@@ -15,12 +15,12 @@ open FsCheck
 module Test = 
     [<EntryPoint>]
     let main argv =
-        fundamentalChecker()
+        //fundamentalChecker()
         //singleRenderTest()
         //runManyExamples()
         //runManyAndRenderIfBad()
         //ArbDemo.singleArbTest()
-        //ArbDemo.manyArbsAndRenderIfBad()
+        ArbDemo.manyArbsAndRenderIfBad()
 
         printfn "Hello World from F#!"
         0 // return an integer exit code
