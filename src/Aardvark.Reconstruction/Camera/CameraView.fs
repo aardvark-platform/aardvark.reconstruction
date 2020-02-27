@@ -43,7 +43,6 @@ module CameraView =
         let dr = abs <| (1.0 - Vec.dot l.Right r.Right    )
         let da = max df (max du dr) / 2.0
 
-        // punishes cameras the more they look in different directions
         let aweight = max 1.0 (dd * 10.0)
         dd + aweight * da
 

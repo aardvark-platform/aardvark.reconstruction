@@ -15,6 +15,7 @@
   <ItemGroup>
     <Compile Include="Generators.fs" />
     <Compile Include="FundamentalChecker.fs" />
+    <Compile Include="RunStats.fs" />
     <Compile Include="PerfectDemos.fs" />
     <Compile Include="ArbDemo.fs" />
     <Compile Include="Program.fs" />
