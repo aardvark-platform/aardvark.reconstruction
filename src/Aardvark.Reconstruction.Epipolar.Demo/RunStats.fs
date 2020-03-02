@@ -37,26 +37,26 @@ module Stats =
         }
 
     let runTitleLine =
-        "i, kind, noise, layout, flatness, camTrans, camRot, ndcDiffSum, ndcCt, camDiff"
+        "i kind noise layout flatness camTrans camRot ndcDiffSum ndcCt camDiff"
 
     let runToString (r : Run) =
         let culture = System.Globalization.CultureInfo.InvariantCulture;
         let sb = StringBuilder()
-        sb.AppendFormat(culture,"{0}, ",r.i) |> ignore
-        sb.AppendFormat(culture,"{0}, ",r.testKind) |> ignore
-        sb.AppendFormat(culture,"{0:0.00000000}, ",r.noise) |> ignore
-        sb.AppendFormat(culture,"{0}, {1:0.00000000}, ",(r.pointLayout |> fst),(r.pointLayout |> snd)) |> ignore
-        sb.AppendFormat(culture,"{0}, ",r.camTrans) |> ignore
-        sb.AppendFormat(culture,"{0}, ",r.camRot) |> ignore
+        sb.AppendFormat(culture,"{0} ",r.i) |> ignore
+        sb.AppendFormat(culture,"{0} ",r.testKind) |> ignore
+        sb.AppendFormat(culture,"{0:0.000000000} ",r.noise) |> ignore
+        sb.AppendFormat(culture,"{0} {1:0.00000000} ",(r.pointLayout |> fst),(r.pointLayout |> snd)) |> ignore
+        sb.AppendFormat(culture,"{0} ",r.camTrans) |> ignore
+        sb.AppendFormat(culture,"{0} ",r.camRot) |> ignore
         match r.stats with 
-        | None -> sb.AppendFormat(culture," ,  ,  ") |> ignore
+        | None -> sb.AppendFormat(culture,"     ") |> ignore
         | Some stats -> 
-            sb.AppendFormat(culture,"{0:0.00000000}, ", stats.ndcOffsetSum) |> ignore
-            sb.AppendFormat(culture,"{0}, ", stats.ndcCount) |> ignore
+            sb.AppendFormat(culture,"{0:0.00000000} ", stats.ndcOffsetSum) |> ignore
+            sb.AppendFormat(culture,"{0} ", stats.ndcCount) |> ignore
             sb.AppendFormat(culture,"{0:0.00000000000}", stats.camDiff) |> ignore
         sb.ToString()        
 
-    let run () =
+    let runny () =
 
         let noiseAmount (scene : Scenario) : float =
             let d = scene |> Scenario.getData
@@ -103,7 +103,7 @@ module Stats =
 
         let iter (i : int) =
             let rand = RandomSystem()
-            let scenario = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genScenario
+            let scenario = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genPlaneScenario
 
             let (name,recover,scene) =
                 match scenario with
@@ -113,7 +113,7 @@ module Stats =
                         let c0 = scene.cam0
                         let c1 = scene.cam1
                         let scale = (c1.Location - c0.Location).Length
-                        let f = FundamentalMatrix.recover 1E-4 scene.matches
+                        let f = FundamentalMatrix.recover 1E+10 scene.matches
                         match f with
                         | None -> 
                             []
@@ -155,7 +155,8 @@ module Stats =
                 | Some c -> 
                     let ndcSum = 
                         pMatches |> Array.sumBy (fun (o,p) -> 
-                            (c |> Camera.unproject o).GetMinimalDistanceTo(p)
+                            let obs = (c |> Camera.projectUnsafe p)
+                            (obs - o) |> Vec.length
                         )
                     let ndcCount = pMatches |> Array.length                    
                     let sim = unsimilarity c scene.cam1
@@ -197,21 +198,21 @@ module Stats =
         let ls = File.ReadAllLines(@"D:\temp2\runny.txt")
         Log.stop()
         Log.startTimed "Filtering"
-        let toks = ls |> Array.map (fun s -> s.Split([|','|]) |> Array.map(fun s -> s.Trim()))
+        let toks = ls |> Array.map (fun s -> s.Split([|' '|]) |> Array.map(fun s -> s.Trim()))
 
         let ostr = 
             toks |> Array.filter (fun ts -> 
-                ts.[1] = "FUNDAMENTAL" &&
-                ts.[3] = "Volume" &&
-                ts.[4] <> "AlongForward"
+                ts.[1] = "HOMOGRAPHY" &&
+                ts.[3] = "Plane" //&&
+                //ts.[4] <> "AlongForward"
             )    |> Array.choose (fun ts -> 
                 if ts.[7].IsNullOrEmpty() then
                     None
                 else            
                     let sum = ts.[7] |> float
                     let ct = ts.[8] |> int |> float
-                    let avg = (sum / ct) |> string
-                    [|ts.[2];avg;ts.[9]|] |> String.concat "," |> Some
+                    let avg = (sum / ct) |> sprintf "%.9f"
+                    [|ts.[2];avg;ts.[9]|] |> String.concat " " |> Some
             ) |> String.concat "\n"
         Log.stop()
 

@@ -349,14 +349,15 @@ module Lala =
     let genNoiseKind =
         gen {
             let! i = Gen.choose(0,3)
-            let! noiseStr = floatBetween 0.00001 0.01
+            let! noiseStr = floatBetween 0.000001 0.2
             let! garbChance = floatBetween 0.005 0.05
-            match i with
-            | 0 -> return Nope
-            | 1 -> return Offset noiseStr
-            | 2 -> return Garbage garbChance
-            | 3 -> return OffsetAndGarbage (noiseStr, garbChance)
-            | _ -> return failwith "no"
+            return Offset noiseStr
+            // match i with
+            // | 0 -> return Nope
+            // | 1 -> return Offset noiseStr
+            // | 2 -> return Garbage garbChance
+            // | 3 -> return OffsetAndGarbage (noiseStr, garbChance)
+            // | _ -> return failwith "no"
         }
 
     let applyNoise (kind : NoiseKind) (ms : (V2d*V2d)[]) =
@@ -730,6 +731,47 @@ module Lala =
                 }
         }
 
+    let genVolumeScenario =
+        gen {
+            let! scale = floatBetween 4.0 4.0   
+
+            let p0 = V3d.OOO
+            let t0 = V3d.IOO
+            let fw0 = (t0 - p0).Normalized
+            let nf = Trafo3d.FromNormalFrame(p0,fw0)
+            let u0 = nf.Backward.C0.XYZ.Normalized
+            let cv0 = CameraView.lookAt p0 t0 u0
+            let! proj0 = arbProjection
+            let cam0 = { view = cv0; proj = proj0 }
+            let apts = 
+                let bounds = dataBounds cam0 scale
+                InVolume bounds
+
+            let! data = genScenarioData true cam0 scale apts
+            let scenario = FundamentalScenario data
+            return scenario
+        }    
+
+    let genPlaneScenario =
+        gen {
+            let! scale = floatBetween 4.0 4.0   
+
+            let p0 = V3d.OOO
+            let t0 = V3d.IOO
+            let fw0 = (t0 - p0).Normalized
+            let nf = Trafo3d.FromNormalFrame(p0,fw0)
+            let u0 = nf.Backward.C0.XYZ.Normalized
+            let cv0 = CameraView.lookAt p0 t0 u0
+            let! proj0 = arbProjection
+            let cam0 = { view = cv0; proj = proj0 }
+            
+            let! q = arbQuadFacing45 cam0 scale             
+            let apts = InQuad q
+
+            let! data = genScenarioData true cam0 scale apts
+            let scenario = HomographyScenario data
+            return scenario
+        }    
     let private generateScenario noise  =
         gen {
             let! scale = floatBetween 4.0 4.0   

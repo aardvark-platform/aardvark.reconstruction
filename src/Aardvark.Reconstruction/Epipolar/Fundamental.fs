@@ -67,7 +67,8 @@ module FundamentalMatrix =
                 | None -> false
                 | Some(U,md,Vt) ->
                     let idx = if lr.Length > 8 then 8 else 7
-                    if Fun.IsTiny(md.[idx,idx], eps) |> not then
+                    let mi = md.[idx,idx]
+                    if Fun.IsTiny(mi, eps) |> not then
                         false
                     else
 

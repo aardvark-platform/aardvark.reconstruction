@@ -414,7 +414,7 @@ module ArbDemo =
             counter |> Mod.map ( fun _ -> 
                 Log.startTimed("Generate Scenario")
 
-                let scenario = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genScenario 
+                let scenario = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genPlaneScenario 
                 //let scene : Scenario = @"D:\temp\scene.bin" |> File.readAllBytes |> Pickler.pickler.UnPickle
 
                 Log.line "Scenario:\n"
@@ -427,7 +427,7 @@ module ArbDemo =
                             let c0 = scene.cam0
                             let c1 = scene.cam1
                             let scale = (c1.Location - c0.Location).Length
-                            let f = FundamentalMatrix.recover 1E-4 scene.matches
+                            let f = FundamentalMatrix.recover 1E+10 scene.matches
                             match f with
                             | None -> 
                                 Log.warn "No fundamental possible"
@@ -479,10 +479,11 @@ module ArbDemo =
                     | None -> Log.warn "No camera: %s" n
                     | Some c -> 
                         let d = 
-                            pMatches |> Array.sumBy (fun (o,p) -> 
+                            pMatches |> Array.averageBy (fun (o,p) -> 
                                 (c |> Camera.unproject o).GetMinimalDistanceTo(p)
                             )
-                        if d > 1E-0 then Log.error "bad cam: %s" n            
+                        if d > 1E-0 then Log.error "bad cam: %s (%f)" n d
+                        Log.line "AvgNdcErr: %.9f" d
                         Log.line "sameness %s %f" n (Camera.sameness scene.cam1 c)
 
                 fu co name

@@ -15,6 +15,18 @@
             "console": "integratedTerminal",
             "stopAtEntry": false,
             "internalConsoleOptions": "neverOpen"
+        },        
+        {
+            "name": "Test",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/bin/Debug/netcoreapp2.0/Test.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/bin/Debug/netcoreapp2.0/",
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            "internalConsoleOptions": "neverOpen"
         },
         {
             "name": ".NET Core Launch (web)",

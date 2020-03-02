@@ -24,6 +24,7 @@ nuget FsCheck ~> 2.14.0
 nuget Expecto ~> 8.13.1
 nuget Expecto.FsCheck ~> 8.13.1
 
+nuget Aardvark.Geometry.PointTree ~> 4.10.11
 group Build
 source https://api.nuget.org/v3/index.json
 github aardvark-platform/aardvark.fake:v5

@@ -19,9 +19,9 @@ module Test =
         //singleRenderTest()
         //runManyExamples()
         //runManyAndRenderIfBad()
-        //ArbDemo.singleArbTest()
+        ArbDemo.singleArbTest()
         //ArbDemo.manyArbsAndRenderIfBad()
-        Stats.run()
+        //Stats.runny()
         //Stats.statty()
 
         printfn "Hello World from F#!"
