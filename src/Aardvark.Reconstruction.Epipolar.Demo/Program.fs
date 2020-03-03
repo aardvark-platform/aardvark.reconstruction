@@ -19,10 +19,11 @@ module Test =
         //singleRenderTest()
         //runManyExamples()
         //runManyAndRenderIfBad()
-        ArbDemo.singleArbTest()
+        //ArbDemo.singleArbTest()
         //ArbDemo.manyArbsAndRenderIfBad()
         //Stats.runny()
         //Stats.statty()
+        Stats.runnyAndStatty()
 
         printfn "Hello World from F#!"
         0 // return an integer exit code

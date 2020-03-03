@@ -20,8 +20,8 @@ open System.Text
 module Stats =
     type Stats =
         {
-            ndcOffsetSum : float
-            ndcCount : int
+            algebErr : float
+            ndcOffsetAvg : float
             camDiff : float
         }
 
@@ -37,7 +37,7 @@ module Stats =
         }
 
     let runTitleLine =
-        "i kind noise layout flatness camTrans camRot ndcDiffSum ndcCt camDiff"
+        "i kind noise layout flatness camTrans camRot algebErr ndcDiff camDiff"
 
     let runToString (r : Run) =
         let culture = System.Globalization.CultureInfo.InvariantCulture;
@@ -51,23 +51,23 @@ module Stats =
         match r.stats with 
         | None -> sb.AppendFormat(culture,"     ") |> ignore
         | Some stats -> 
-            sb.AppendFormat(culture,"{0:0.00000000} ", stats.ndcOffsetSum) |> ignore
-            sb.AppendFormat(culture,"{0} ", stats.ndcCount) |> ignore
+            sb.AppendFormat(culture,"{0:0.00000000000} ", stats.algebErr) |> ignore
+            sb.AppendFormat(culture,"{0:0.00000000000} ", stats.ndcOffsetAvg) |> ignore
             sb.AppendFormat(culture,"{0:0.00000000000}", stats.camDiff) |> ignore
         sb.ToString()        
 
-    let runny () =
+    let runnyScen name (scenarioGen : Gen<Scenario>) =
 
         let noiseAmount (scene : Scenario) : float =
             let d = scene |> Scenario.getData
             
             match d.noise with
             | Nope -> 0.0
-             // o*0.5 is the average offset of a feature, each feature has 0.5 chance to be offset
-            | Offset o -> 0.25 * o 
+             // 0.025 is the average offset of a feature, each feature has c chance to be offset
+            | Offset c -> 0.025 * c
              // 1.0 is the average offset of a feature, each feature has p chance to be offset
             | Garbage p -> p
-            | OffsetAndGarbage (o,p) -> 0.25*o + p
+            | OffsetAndGarbage (c,p) -> 0.025*c + p
 
 
         let getPointLayout (scene : Scenario) : string * float=
@@ -103,7 +103,7 @@ module Stats =
 
         let iter (i : int) =
             let rand = RandomSystem()
-            let scenario = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genPlaneScenario
+            let scenario = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) scenarioGen
 
             let (name,recover,scene) =
                 match scenario with
@@ -116,13 +116,18 @@ module Stats =
                         let f = FundamentalMatrix.recover 1E+10 scene.matches
                         match f with
                         | None -> 
-                            []
+                            666.0,[]
                         | Some (fund,_,_) -> 
+                            let alg = 
+                                scene.matches
+                                |> Array.averageBy (fun (l,r) -> 
+                                    abs <| Vec.dot (fund * V3d(l,1.0)) (V3d(r,1.0))
+                                )
                             match FundamentalMatrix.decompose fund c0.proj c1.proj [] with
                             | [] -> 
-                                []
+                                alg,[]
                             | fs -> 
-                                fs |> List.map (fun m -> m * scale)
+                                alg,fs |> List.map (fun m -> m * scale)
                     name,recover,scene
                 | HomographyScenario scene -> 
                     let name = "HOMOGRAPHY"
@@ -133,20 +138,25 @@ module Stats =
                         let hom = Homography.recover scene.matches
                         match hom with
                         | None -> 
-                            []
+                            666.0,[]
                         | Some h -> 
+                            let alg = 
+                                scene.matches
+                                |> Array.averageBy (fun (l,r) -> 
+                                    Vec.length (h.TransformPosProj(l) - r)
+                                )
                             match Homography.decompose h c0.proj c1.proj [] with
                             | [] -> 
-                                []
+                                alg,[]
                             | hs -> 
-                                hs |> List.map (fun m -> m * scale)
+                                alg,hs |> List.map (fun m -> m * scale)
                     name,recover,scene
 
             let pMatches =
                 Array.zip scene.pts3d scene.matches
                 |> Array.map (fun (p3d,(l,r)) -> r,p3d)
 
-            let mots = recover()
+            let alg,mots = recover()
             let co = getBestFittingMot scene.cam0 scene.cam1 mots |> Option.map (fun m -> { (scene.cam0 + m) with proj = scene.cam1.proj })
 
             let fu c n = 
@@ -158,9 +168,10 @@ module Stats =
                             let obs = (c |> Camera.projectUnsafe p)
                             (obs - o) |> Vec.length
                         )
-                    let ndcCount = pMatches |> Array.length                    
+                    let ndcCount = pMatches |> Array.length    
+                    let ndcAvg = ndcSum / float ndcCount
                     let sim = unsimilarity c scene.cam1
-                    Some {ndcOffsetSum = ndcSum; ndcCount = ndcCount; camDiff = sim}
+                    Some {ndcOffsetAvg = ndcAvg; camDiff = sim; algebErr = alg}
 
             let stats = fu co name
 
@@ -177,8 +188,8 @@ module Stats =
             r
 
 
-        let ct = 1000000
-        let file = @"D:\temp2\runny.txt"
+        let ct = 1000
+        let file = sprintf @"D:\temp2\runny_%s.txt" name
         let inline appendLn s = File.AppendAllText(file,s+"\n")
         appendLn runTitleLine
 
@@ -189,32 +200,80 @@ module Stats =
             Report.Progress(float i/float ct)
 
         Log.stop()
-        Log.line "Done"
+        Log.line "Done %s" name
 
         ()
+    
+    let runny() = runnyScen "" Lala.genVolumeScenario
 
-    let statty () =
+    let stattyCond name (cond : int -> list<string>) =
         Log.startTimed "Reading"
-        let ls = File.ReadAllLines(@"D:\temp2\runny.txt")
+        let ls = File.ReadAllLines(sprintf @"D:\temp2\runny_%s.txt" name)
         Log.stop()
         Log.startTimed "Filtering"
         let toks = ls |> Array.map (fun s -> s.Split([|' '|]) |> Array.map(fun s -> s.Trim()))
-
         let ostr = 
             toks |> Array.filter (fun ts -> 
-                ts.[1] = "HOMOGRAPHY" &&
-                ts.[3] = "Plane" //&&
-                //ts.[4] <> "AlongForward"
+                ts |> Array.mapi (fun i s -> 
+                    match cond(i) with
+                    | [] -> true
+                    | cs -> cs |> List.contains s
+                ) |> Array.forall id
             )    |> Array.choose (fun ts -> 
                 if ts.[7].IsNullOrEmpty() then
                     None
                 else            
-                    let sum = ts.[7] |> float
-                    let ct = ts.[8] |> int |> float
-                    let avg = (sum / ct) |> sprintf "%.9f"
-                    [|ts.[2];avg;ts.[9]|] |> String.concat " " |> Some
+                    let alg = ts.[7] 
+                    let ndcdiff = ts.[8] 
+                    let camdiff = ts.[9] 
+                    [|ts.[2];alg;ndcdiff;camdiff|] |> String.concat " " |> (fun s -> s.Replace(".",",")) |> Some
             ) |> String.concat "\n"
         Log.stop()
 
-        File.writeAllText @"D:\temp2\statty.txt" ostr
-        Log.line "Written"
+        let path = @"D:\temp2"
+
+        let suffix = 
+            List.init toks.[0].Length (fun i -> cond(i)) |> List.concat
+            |> String.concat "_"
+
+        let fn = Path.combine [path;sprintf "statty_%s.txt" suffix]
+        File.writeAllText fn ostr
+        Log.line "Written %s" fn
+
+    //"i kind noise layout flatness camTrans camRot algebErr ndcDiff camDiff"
+    let statty () =
+
+        let want = 
+            function 
+            | 1 -> ["FUNDAMENTAL"]
+            | 5 -> ["Arbitrary"]
+            | 6 -> ["Normal"; "Roll"]
+            | _ -> []
+
+        stattyCond "" want
+
+    let runnyAndStatty() =
+
+        Log.line "Runny 1"
+        runnyScen "Hom" Lala.genPlaneScenario
+        Log.line "Statty 1"
+        let want = 
+            function 
+            | 1 -> ["HOMOGRAPHY"]
+            | 5 -> ["Arbitrary"]
+            | 6 -> ["Normal"; "Roll"]
+            | _ -> []
+        stattyCond "Hom" want 
+
+        Log.line "Runny 2"
+        runnyScen "Fun" Lala.genVolumeScenario
+        Log.line "Statty 2"
+        let want = 
+            function 
+            | 1 -> ["FUNDAMENTAL"]
+            | 5 -> ["Arbitrary"]
+            | 6 -> ["Normal"; "Roll"]
+            | _ -> []
+        stattyCond "Fun" want 
+
+        Log.line "finished"

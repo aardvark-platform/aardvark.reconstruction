@@ -342,16 +342,18 @@ module Lala =
 
     type NoiseKind =
         | Nope
-        | Offset of len:float
+        | Offset of chance:float
         | Garbage of chance:float
-        | OffsetAndGarbage of len:float * chance:float
+        | OffsetAndGarbage of oChance:float * gChance:float
 
     let genNoiseKind =
         gen {
             let! i = Gen.choose(0,3)
-            let! noiseStr = floatBetween 0.000001 0.2
-            let! garbChance = floatBetween 0.005 0.05
-            return Offset noiseStr
+            let! offsetProb = floatBetween 0.001 0.5
+            let! garbChance = floatBetween 0.0001 0.25
+            return Garbage garbChance
+            //return Offset offsetProb
+            //return Nope
             // match i with
             // | 0 -> return Nope
             // | 1 -> return Offset noiseStr
@@ -365,10 +367,9 @@ module Lala =
             let! fs = Gen.arrayOfLength ms.Length (floatBetween 0.0 1.0)
             match kind with 
             | Nope -> return ms
-            | Offset off ->
-                let! ls  = Gen.arrayOfLength ms.Length (floatBetween 0.0 off)
-                let! ans = Gen.arrayOfLength ms.Length reasonableAngleRad
-                let prob = 0.5
+            | Offset prob ->
+                let! ls    = Gen.arrayOfLength ms.Length (floatBetween 0.0 0.05)
+                let! ans   = Gen.arrayOfLength ms.Length reasonableAngleRad
                 let offs = 
                     Array.map2 (fun (a : float) l ->
                         V2d(cos a, sin a) * l
@@ -393,10 +394,9 @@ module Lala =
                                 (l,garb)                        
                         else (l,r)
                     ) garbs ms fs
-            | OffsetAndGarbage (off,chance) -> 
-                let! ls  = Gen.arrayOfLength ms.Length (floatBetween 0.0 off)
+            | OffsetAndGarbage (prob,chance) -> 
+                let! ls  = Gen.arrayOfLength ms.Length (floatBetween 0.0 0.05)
                 let! ans = Gen.arrayOfLength ms.Length reasonableAngleRad
-                let prob = 0.5
                 let offs = 
                     Array.map2 (fun (a : float) l ->
                         V2d(cos a, sin a) * l
@@ -410,6 +410,7 @@ module Lala =
                                 (l,r+off)                        
                         else (l,r)                    
                     ) fs ms offs
+                let! fs2 = Gen.arrayOfLength ms.Length (floatBetween 0.0 1.0)
                 let! garbs = Gen.arrayOfLength ms.Length (arbV2d (Box2d(V2d.NN,V2d.II)))
                 return
                     Array.map3 (fun garb (l,r) f -> 
@@ -419,7 +420,7 @@ module Lala =
                             else
                                 (l,garb)                        
                         else (l,r)
-                    ) garbs g fs
+                    ) garbs g fs2
         }        
 
     let arbLineWithin (box : Box3d) =
@@ -474,7 +475,7 @@ module Lala =
 
     let genRotModifier =
         gen {
-            let! i = Gen.choose(1,3)
+            let! i = Gen.choose(2,3)
             match i with
             | 1 -> return RotModifier.Not
             | 2 -> return Normal
@@ -487,7 +488,7 @@ module Lala =
 
     let genCameraTrans (scale : float) =
         gen {
-            let! i = Gen.choose(0,3)
+            let! i = Gen.choose(3,3)
             match i with
             | 0 -> return ArbCameraTrans.No
             | 1 -> 
@@ -695,7 +696,8 @@ module Lala =
 
     let genScenarioData (noise : bool) (cam0 : Camera) (scale : float) (apts : ArbPoints) =
         gen {
-            let! pointcount = intBetween 128 196     
+            let pointcount = 300
+            //let! pointcount = intBetween 768 768     
 
             let! pts3d = genPoints apts pointcount
             let bb = dataBounds cam0 scale

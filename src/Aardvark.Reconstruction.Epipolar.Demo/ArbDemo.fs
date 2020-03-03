@@ -414,7 +414,7 @@ module ArbDemo =
             counter |> Mod.map ( fun _ -> 
                 Log.startTimed("Generate Scenario")
 
-                let scenario = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genPlaneScenario 
+                let scenario = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genVolumeScenario 
                 //let scene : Scenario = @"D:\temp\scene.bin" |> File.readAllBytes |> Pickler.pickler.UnPickle
 
                 Log.line "Scenario:\n"
