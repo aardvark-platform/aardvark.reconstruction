@@ -119,6 +119,8 @@ type ImagePoint =
         val mutable idx : int
     end
 
+    new(n,i) = { ndc = n; idx = i }
+
 type CameraMatch =
     {
         tag : string

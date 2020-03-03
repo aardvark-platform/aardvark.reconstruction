@@ -72,7 +72,7 @@ module Homography =
      
             try
                 let perm = PM.LuFactorize()
-                let pp = PM.LuSolve(perm,R)
+                let pp = PM.LuSolve(perm,R) // <- sometimes broken??
                 Some (M33d pp)
             with
                 |_-> None
@@ -89,8 +89,8 @@ module Homography =
     let recover (corresponding : array<V2d * V2d>) =
         if corresponding.Length < 4 then
             None
-        elif corresponding.Length = 4 then
-            solve corresponding.[0] corresponding.[1] corresponding.[2] corresponding.[3] 
+        // elif corresponding.Length = 4 then
+        //     solve corresponding.[0] corresponding.[1] corresponding.[2] corresponding.[3] 
         else    
             estimate corresponding
 
@@ -379,7 +379,7 @@ module Homography =
             
             CSharpList.toArray result
 
-        let getSolution maxNdc proj (res : RansacResult<ImagePoint * ImagePoint,ImagePoint * ImagePoint[],Trafo2d>) =
+        let getSolution maxNdc (lProj : Projection) (rProj : Projection) (res : RansacResult<ImagePoint * ImagePoint,ImagePoint * ImagePoint[],Trafo2d>) =
             let H = res.value.Forward
             let matches =
                 res.inliers |> Array.map (fun i ->
@@ -389,7 +389,7 @@ module Homography =
                 )
 
             let referencePoints = res.model |> Seq.map (fun (l,r) -> l.ndc, r.ndc) |> Seq.toList
-            let decomp = decompose H proj proj referencePoints
+            let decomp = decompose H lProj rProj referencePoints
 
             decomp |> List.map ( fun motion -> 
                 {
@@ -468,7 +468,7 @@ module Homography =
     module Ransac =
         open SacHelpers
 
-        let problem (maxNdcDist : float) (projection : Projection) =
+        let problem (lProj : Projection) (rProj : Projection) (maxNdcDist : float)  =
             let countInliers (sol : Trafo2d) (test : array<ImagePoint * ImagePoint[]>) =
                 let mutable cnt = 0
                 for tup in test do
@@ -490,7 +490,7 @@ module Homography =
                 RansacProblem.solve           = solve
                 RansacProblem.countInliers    = countInliers
                 RansacProblem.getInliers      = getInliers
-                RansacProblem.getSolution     = getSolution maxNdcDist projection
+                RansacProblem.getSolution     = getSolution maxNdcDist lProj rProj
             } :> IRansacProblem<_,_,_>
             
     module Mulsac =
@@ -544,14 +544,14 @@ module Homography =
 
             res
         
-        let problem (maxNdc : float) (proj : Projection) (motionSimilarityEps : float) =
+        let problem (lProj : Projection) (rProj : Projection) (maxNdc : float) (motionSimilarityEps : float) =
             
             let msProb = {
                 neededSamples = 4
                 solve = SacHelpers.solve
                 countInliers = countInliers maxNdc
                 getInliers = getInliers maxNdc
-                getSolution = getSolution maxNdc proj
+                getSolution = getSolution maxNdc lProj rProj
                 same = same maxNdc
             }
 

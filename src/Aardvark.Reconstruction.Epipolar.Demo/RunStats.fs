@@ -29,7 +29,8 @@ module Stats =
         {
             i : int
             testKind : string
-            noise : float
+            noiseKind : string
+            noiseAmount : float
             pointLayout : string * float
             camTrans : string
             camRot : string
@@ -37,14 +38,15 @@ module Stats =
         }
 
     let runTitleLine =
-        "i kind noise layout flatness camTrans camRot algebErr ndcDiff camDiff"
+        "i kind noiseKind noiseAmt layout flatness camTrans camRot algebErr ndcDiff camDiff"
 
     let runToString (r : Run) =
         let culture = System.Globalization.CultureInfo.InvariantCulture;
         let sb = StringBuilder()
         sb.AppendFormat(culture,"{0} ",r.i) |> ignore
         sb.AppendFormat(culture,"{0} ",r.testKind) |> ignore
-        sb.AppendFormat(culture,"{0:0.000000000} ",r.noise) |> ignore
+        sb.AppendFormat(culture,"{0:0} ",r.noiseKind) |> ignore
+        sb.AppendFormat(culture,"{0:0.000000000} ",r.noiseAmount) |> ignore
         sb.AppendFormat(culture,"{0} {1:0.00000000} ",(r.pointLayout |> fst),(r.pointLayout |> snd)) |> ignore
         sb.AppendFormat(culture,"{0} ",r.camTrans) |> ignore
         sb.AppendFormat(culture,"{0} ",r.camRot) |> ignore
@@ -56,50 +58,50 @@ module Stats =
             sb.AppendFormat(culture,"{0:0.00000000000}", stats.camDiff) |> ignore
         sb.ToString()        
 
-    let runnyScen name (scenarioGen : Gen<Scenario>) =
-
-        let noiseAmount (scene : Scenario) : float =
-            let d = scene |> Scenario.getData
-            
-            match d.noise with
-            | Nope -> 0.0
-             // 0.025 is the average offset of a feature, each feature has c chance to be offset
-            | Offset c -> 0.025 * c
-             // 1.0 is the average offset of a feature, each feature has p chance to be offset
-            | Garbage p -> p
-            | OffsetAndGarbage (c,p) -> 0.025*c + p
+    let noiseAmount (scene : Scenario) : string*float =
+        let d = scene |> Scenario.getData
+        
+        match d.noise with
+        | Nope -> "Nope",0.0
+         // 0.025 is the average offset of a feature, each feature has c chance to be offset
+        | Offset c -> "Noise",c
+         // 1.0 is the average offset of a feature, each feature has p chance to be offset
+        | Garbage p -> "Mismatch",p
+        | OffsetAndGarbage (c,p) -> "NoiseAndMismatch",c + p
 
 
-        let getPointLayout (scene : Scenario) : string * float=
-            let d = scene |> Scenario.getData
-            match d.points with
-            | AlmostLinearQuad (_,f)        -> "AlmostLinearPlane",f
-            | InQuad _                      -> "Plane",1.0
-            | AlmostFlatVolume (_,f)        -> "AlmostPlanarVolume",f
-            | AlmostLinearVolume (_,f)      -> "AlmostLinearVolume",f
-            | InVolume _                    -> "Volume",1.0
+    let getPointLayout (scene : Scenario) : string * float=
+        let d = scene |> Scenario.getData
+        match d.points with
+        | AlmostLinearQuad (_,f)        -> "AlmostLinearPlane",f
+        | InQuad _                      -> "Plane",1.0
+        | AlmostFlatVolume (_,f)        -> "AlmostPlanarVolume",f
+        | AlmostLinearVolume (_,f)      -> "AlmostLinearVolume",f
+        | InVolume _                    -> "Volume",1.0
 
-        let getCamTrans (scene : Scenario) : string =
-            let d = scene |> Scenario.getData
+    let getCamTrans (scene : Scenario) : string =
+        let d = scene |> Scenario.getData
+        match d.camtrans with
+        | No -> "None"
+        | AlongFw _ -> "AlongForward"
+        | InPlane _ -> "InImagePlane"
+        | ArbitraryDir _ -> "Arbitrary"
+
+    let getCamRot (scene : Scenario) : string =
+        let d = scene |> Scenario.getData
+        match d.camrot with
+        | Not               -> "None"
+        | Normal            -> 
             match d.camtrans with
-            | No -> "None"
-            | AlongFw _ -> "AlongForward"
-            | InPlane _ -> "InImagePlane"
-            | ArbitraryDir _ -> "Arbitrary"
+            | No | AlongFw _ -> "None"
+            | _ -> "Normal"
+        | NormalAndRoll _   -> "Roll"
 
-        let getCamRot (scene : Scenario) : string =
-            let d = scene |> Scenario.getData
-            match d.camrot with
-            | Not               -> "None"
-            | Normal            -> 
-                match d.camtrans with
-                | No | AlongFw _ -> "None"
-                | _ -> "Normal"
-            | NormalAndRoll _   -> "Roll"
+    let unsimilarity (c0 : Camera) (c1 : Camera) =
+        CameraView.sameness c0.view c1.view
 
-        let unsimilarity (c0 : Camera) (c1 : Camera) =
-            CameraView.sameness c0.view c1.view
 
+    let runnyScen name (scenarioGen : Gen<Scenario>) =
 
         let iter (i : int) =
             let rand = RandomSystem()
@@ -174,12 +176,13 @@ module Stats =
                     Some {ndcOffsetAvg = ndcAvg; camDiff = sim; algebErr = alg}
 
             let stats = fu co name
-
+            let noisekind, noiseAmount = noiseAmount scenario
             let r = 
                 { 
                     i           = i
                     testKind    = name
-                    noise       = noiseAmount scenario
+                    noiseKind   = noisekind
+                    noiseAmount = noiseAmount
                     pointLayout = getPointLayout scenario
                     camTrans    = getCamTrans scenario
                     camRot      = getCamRot scenario
@@ -220,13 +223,13 @@ module Stats =
                     | cs -> cs |> List.contains s
                 ) |> Array.forall id
             )    |> Array.choose (fun ts -> 
-                if ts.[7].IsNullOrEmpty() then
+                if ts.[8].IsNullOrEmpty() then
                     None
                 else            
-                    let alg = ts.[7] 
-                    let ndcdiff = ts.[8] 
-                    let camdiff = ts.[9] 
-                    [|ts.[2];alg;ndcdiff;camdiff|] |> String.concat " " |> (fun s -> s.Replace(".",",")) |> Some
+                    let alg = ts.[8] 
+                    let ndcdiff = ts.[9] 
+                    let camdiff = ts.[10] 
+                    [|ts.[3];alg;ndcdiff;camdiff|] |> String.concat " " |> (fun s -> s.Replace(".",",")) |> Some
             ) |> String.concat "\n"
         Log.stop()
 
@@ -240,14 +243,14 @@ module Stats =
         File.writeAllText fn ostr
         Log.line "Written %s" fn
 
-    //"i kind noise layout flatness camTrans camRot algebErr ndcDiff camDiff"
+    //"i kind noiseKind noiseAmt layout flatness camTrans camRot algebErr ndcDiff camDiff"
     let statty () =
 
         let want = 
             function 
             | 1 -> ["FUNDAMENTAL"]
-            | 5 -> ["Arbitrary"]
-            | 6 -> ["Normal"; "Roll"]
+            | 6 -> ["Arbitrary"]
+            | 7 -> ["Normal"; "Roll"]
             | _ -> []
 
         stattyCond "" want
@@ -260,8 +263,8 @@ module Stats =
         let want = 
             function 
             | 1 -> ["HOMOGRAPHY"]
-            | 5 -> ["Arbitrary"]
-            | 6 -> ["Normal"; "Roll"]
+            | 6 -> ["Arbitrary"]
+            | 7 -> ["Normal"; "Roll"]
             | _ -> []
         stattyCond "Hom" want 
 
@@ -271,8 +274,8 @@ module Stats =
         let want = 
             function 
             | 1 -> ["FUNDAMENTAL"]
-            | 5 -> ["Arbitrary"]
-            | 6 -> ["Normal"; "Roll"]
+            | 6 -> ["Arbitrary"]
+            | 7 -> ["Normal"; "Roll"]
             | _ -> []
         stattyCond "Fun" want 
 

@@ -342,33 +342,38 @@ module Lala =
 
     type NoiseKind =
         | Nope
-        | Offset of chance:float
+        | Offset of sigma : float
         | Garbage of chance:float
         | OffsetAndGarbage of oChance:float * gChance:float
 
     let genNoiseKind =
         gen {
-            let! i = Gen.choose(0,3)
-            let! offsetProb = floatBetween 0.001 0.5
+            let! i = Gen.choose(1,3)
             let! garbChance = floatBetween 0.0001 0.25
-            return Garbage garbChance
+            let! sigma = floatBetween 0.000001 0.025
+            //return Garbage garbChance
             //return Offset offsetProb
             //return Nope
-            // match i with
-            // | 0 -> return Nope
-            // | 1 -> return Offset noiseStr
-            // | 2 -> return Garbage garbChance
-            // | 3 -> return OffsetAndGarbage (noiseStr, garbChance)
-            // | _ -> return failwith "no"
+            match i with
+            | 0 -> return Nope
+            | 1 -> return Offset sigma
+            | 2 -> return Garbage garbChance
+            | 3 -> return OffsetAndGarbage (sigma, garbChance)
+            | _ -> return failwith "no"
         }
+
+    
+    let gauss = RandomGaussian(rand)
+    let nextGaussian sigma =
+        gen { return gauss.GetDouble(0.0,sigma) |> abs |> clamp 0.0 1.0 }
 
     let applyNoise (kind : NoiseKind) (ms : (V2d*V2d)[]) =
         gen {
             let! fs = Gen.arrayOfLength ms.Length (floatBetween 0.0 1.0)
             match kind with 
             | Nope -> return ms
-            | Offset prob ->
-                let! ls    = Gen.arrayOfLength ms.Length (floatBetween 0.0 0.05)
+            | Offset sigma ->
+                let! ls    = Gen.arrayOfLength ms.Length (nextGaussian sigma)
                 let! ans   = Gen.arrayOfLength ms.Length reasonableAngleRad
                 let offs = 
                     Array.map2 (fun (a : float) l ->
@@ -376,8 +381,8 @@ module Lala =
                     ) ans ls
                 return             
                     Array.map3 (fun f (l,r) off -> 
-                        if f <= prob then
-                            if f <= prob * 0.5 then
+                        if f <= 1.0 then
+                            if f <= 1.0 * 0.5 then
                                 (l+off,r)
                             else
                                 (l,r+off)                        
@@ -394,8 +399,8 @@ module Lala =
                                 (l,garb)                        
                         else (l,r)
                     ) garbs ms fs
-            | OffsetAndGarbage (prob,chance) -> 
-                let! ls  = Gen.arrayOfLength ms.Length (floatBetween 0.0 0.05)
+            | OffsetAndGarbage (sigma,chance) -> 
+                let! ls  = Gen.arrayOfLength ms.Length (nextGaussian sigma)
                 let! ans = Gen.arrayOfLength ms.Length reasonableAngleRad
                 let offs = 
                     Array.map2 (fun (a : float) l ->
@@ -403,8 +408,8 @@ module Lala =
                     ) ans ls
                 let g =               
                     Array.map3 (fun f (l,r) off -> 
-                        if f <= prob then
-                            if f <= prob * 0.5 then
+                        if f <= 1.0 then
+                            if f <= 1.0 * 0.5 then
                                 (l+off,r)
                             else
                                 (l,r+off)                        
