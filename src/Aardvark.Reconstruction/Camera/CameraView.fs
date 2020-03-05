@@ -30,7 +30,7 @@ type CameraView =
     member x.Transformed (sim : Similarity3d) = 
         let rot = x.trafo.Rot * sim.Rot.Inverse
         {
-            trafo = Euclidean3d(rot, -rot.TransformDir(sim.TransformPos(x.Location)))
+            trafo = Euclidean3d(rot, -rot.Transform(sim.TransformPos(x.Location)))
         }
 
 module CameraView =
@@ -63,7 +63,7 @@ module CameraView =
     let forward (c : CameraView) = c.trafo.InvTransformDir(-V3d.OOI)
     let right (c : CameraView) = c.trafo.InvTransformDir(V3d.IOO)
     let up (c : CameraView) = c.trafo.InvTransformDir(V3d.OIO)
-    let location (c : CameraView) = c.trafo.Rot.InvTransformDir(-c.trafo.Trans)
+    let location (c : CameraView) = c.trafo.Rot.InvTransform(-c.trafo.Trans)
 
     let inline transformed (sim : Similarity3d) (c : CameraView) = c.Transformed sim
 
@@ -78,7 +78,7 @@ module CameraView =
         // -r.TransformPos(eye) = r.Trans;
 
         let r = Rot3d.FromFrame(rv, uv, -fv).Inverse
-        let t = -r.TransformPos(eye)
+        let t = -r.Transform(eye)
         let e = Euclidean3d(r, t)
         { trafo = e }
 
@@ -127,8 +127,8 @@ module CameraMotion =
     let zero = { trafo = Euclidean3d.Identity; isNormalized = false }
 
     let approxEqual (eps : float) (l : CameraMotion) (r : CameraMotion) =
-        (Rot3d.ApproxEqual(l.trafo.Rot, r.trafo.Rot, eps) || Rot3d.ApproxEqual(-l.trafo.Rot, r.trafo.Rot, eps)) &&
-        V3d.ApproxEqual(l.trafo.Trans, r.trafo.Trans, eps)
+        (Fun.ApproximateEquals(l.trafo.Rot, r.trafo.Rot, eps) || Fun.ApproximateEquals(-l.trafo.Rot, r.trafo.Rot, eps)) &&
+        Fun.ApproximateEquals(l.trafo.Trans, r.trafo.Trans, eps)
 
     let max3 x y z =
         if x > y then   
@@ -154,9 +154,9 @@ module CameraMotion =
         let x = V3d.IOO
         let y = V3d.OIO
         let z = V3d.OOI
-        let px = r.trafo.Rot.InvTransformDir( l.trafo.Rot.TransformDir x)
-        let py = r.trafo.Rot.InvTransformDir( l.trafo.Rot.TransformDir y)
-        let pz = r.trafo.Rot.InvTransformDir( l.trafo.Rot.TransformDir z)
+        let px = r.trafo.Rot.InvTransform( l.trafo.Rot.Transform x)
+        let py = r.trafo.Rot.InvTransform( l.trafo.Rot.Transform y)
+        let pz = r.trafo.Rot.InvTransform( l.trafo.Rot.Transform z)
 
         let dx = Vec.length(x-px)
         let dy = Vec.length(y-py)
@@ -172,7 +172,7 @@ module CameraMotion =
     let normalize (m : CameraMotion) =
         if m.isNormalized then
             m
-        elif V3d.ApproxEqual(m.trafo.Trans, V3d.Zero, 1E-5) then
+        elif Fun.ApproximateEquals(m.trafo.Trans, V3d.Zero, 1E-5) then
             { m with isNormalized = true }
         else
             { 
@@ -197,4 +197,4 @@ module CameraMotion =
 
     let ofRotationAndTrans (m : M33d) (trans : V3d) =
         let r = Rot3d.FromM33d m
-        { trafo = Euclidean3d(r, r.TransformDir(trans)); isNormalized = false }
+        { trafo = Euclidean3d(r, r.Transform(trans)); isNormalized = false }

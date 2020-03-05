@@ -1,12 +1,16 @@
 ﻿namespace Aardvark.Reconstruction.Epipolar.Demo 
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
 open Aardvark.Reconstruction
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open FsCheck
+
+[<AutoOpen>]
+module Util = 
+    let inline (~~) (x : 'a) = AVal.constant x
+
 
 module IGP =
     let solidQuadrangleOfPlane ((n,p) : V3d*V3d) (scale : float) (color : C4b) =
@@ -61,7 +65,7 @@ module Sg =
             |> Sg.vertexAttribute DefaultSemantic.Positions ~~positions
             |> Sg.vertexAttribute DefaultSemantic.Colors ~~colors
             |> Sg.index ~~index
-    let camera (scale : IMod<float>) (c : Camera) (col : C4b) =
+    let camera (scale : aval<float>) (c : Camera) (col : C4b) =
         let view = Camera.viewTrafo c
         
         let center = Sg.lines ~~C4b.Red ~~[| Line3d(V3d.Zero, -V3d.OOI) |]
@@ -77,7 +81,7 @@ module Sg =
             center
             |> Sg.transform (Trafo3d.Scale(1.0, 1.0 / c.proj.aspect, c.proj.focalLength))
         ]
-        |> Sg.trafo (scale |> Mod.map Trafo3d.Scale)
+        |> Sg.trafo (scale |> AVal.map Trafo3d.Scale)
         |> Sg.transform view.Inverse
         |> Sg.shader {
             do! DefaultSurfaces.trafo
@@ -183,15 +187,15 @@ module Generate =
 
             let FQuads =
                 let (_,pno,pp) = basequads |> List.last 
-                let pn =  (Rot3d(V3d.III.Normalized,45.0*Constant.RadiansPerDegree).TransformPos pno).Normalized
+                let pn =  (Rot3d(V3d.III.Normalized,45.0*Constant.RadiansPerDegree).Transform pno).Normalized
                 let n1 = Vec.cross pn V3d.OOI
                 let n2 = Vec.cross n1 pn
                 let pp2 = pp + V3d.OII * scale * 0.25
-                let pn2 = (Rot3d(V3d.PNN.Normalized,60.0*Constant.RadiansPerDegree).TransformPos pno).Normalized
+                let pn2 = (Rot3d(V3d.PNN.Normalized,60.0*Constant.RadiansPerDegree).Transform pno).Normalized
                 let n12 = Vec.cross pn2 V3d.OOI
                 let n22 = Vec.cross n12 pn2
                 let pp3 = pp2 + V3d.PON * scale * 0.25
-                let pn3 = (Rot3d(V3d.OOI.Normalized,90.0*Constant.RadiansPerDegree).TransformPos pn2).Normalized
+                let pn3 = (Rot3d(V3d.OOI.Normalized,90.0*Constant.RadiansPerDegree).Transform pn2).Normalized
                 let n13 = Vec.cross pn3 V3d.OOI
                 let n23 = Vec.cross n13 pn3
                 [   1,pn, pp
@@ -676,7 +680,7 @@ module Lala =
             { c0 with view = CameraView.lookAt c0.Location (c0.Location + fw1) c0.Up }
         | NormalAndRoll a -> 
             let fw1 = (dataBb.Center - c0.Location).Normalized
-            let up1 = Rot3d(fw1,a).TransformDir c0.Up
+            let up1 = Rot3d(fw1,a).Transform c0.Up
             { c0 with view = CameraView.lookAt c0.Location (c0.Location + fw1) up1 }
 
     type ScenarioData =

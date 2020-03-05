@@ -101,7 +101,7 @@ module FundamentalMatrix =
                 let l = V3d(l,1.0)
                 let r = V3d(r,1.0)
                 let p = F * l
-                if V2d.ApproxEqual(p.XY, V2d.Zero) then
+                if Fun.ApproximateEquals(p.XY, V2d.Zero) then
                     let err = Vec.dot r p
                     err * err
                 else
@@ -122,7 +122,7 @@ module FundamentalMatrix =
             
     let inline approxEquals eps (F0 : M33d) (F1 : M33d) =
         let s = F0.M00/F1.M00
-        M33d.ApproximatelyEquals(F0,F1*s,eps)
+        Fun.ApproximateEquals(F0,F1*s,eps)
 
     // Zhang Ch.9
     let fromCameras (l : Camera) (r : Camera) =

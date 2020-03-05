@@ -331,9 +331,9 @@ module Homography =
 
         let isInlierUnique (eps : float) (h : Trafo2d) (l : ImagePoint) (r : ImagePoint) =
             let p0 = h.Forward.TransformPosProj l.ndc
-            if V2d.Distance(r.ndc, p0) < eps then
+            if Vec.Distance(r.ndc, p0) < eps then
                 let q0 = h.Backward.TransformPosProj r.ndc
-                if V2d.Distance(l.ndc, q0) < eps then
+                if Vec.Distance(l.ndc, q0) < eps then
                     true
                 else
                     false

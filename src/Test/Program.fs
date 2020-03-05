@@ -2,8 +2,7 @@ namespace Test
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
 open MiniCV 
 open Aardvark.Geometry
 open Aardvark.Base.Rendering
@@ -38,11 +37,10 @@ module Bla =
     [<EntryPoint>]
     let main args =
         
-        Ag.initialize()
         Aardvark.Init()
 
-        let lf = @"D:\bla2\facade-blau\DSC02314.JPG"
-        let rf = @"D:\bla2\facade-blau\DSC02315c.JPG"
+        let lf = @"/Users/atti/bla/DJI_Befliegung/Kopteraufnahmen/DJI_0753.JPG"
+        let rf = @"/Users/atti/bla/DJI_Befliegung/Kopteraufnahmen/DJI_0754.JPG"
 
         let limg = (PixImage.Create lf).ToPixImage<byte>()
         let rimg = (PixImage.Create rf).ToPixImage<byte>()
@@ -141,15 +139,15 @@ module Bla =
                     }
             )
             |> Sg.ofList
-            |> Sg.blendMode (Mod.constant BlendMode.Blend)
-            |> Sg.depthTest (Mod.constant DepthTestMode.None)
+            |> Sg.blendMode (AVal.constant BlendMode.Blend)
+            |> Sg.depthTest (AVal.constant DepthTestMode.None)
             |> Sg.pass (RenderPass.after "asdasd" RenderPassOrder.Arbitrary RenderPass.main)
-            |> Sg.viewTrafo (Mod.constant Trafo3d.Identity)
-            |> Sg.projTrafo (Mod.constant Trafo3d.Identity)
+            |> Sg.viewTrafo (AVal.constant Trafo3d.Identity)
+            |> Sg.projTrafo (AVal.constant Trafo3d.Identity)
 
         let imgSg (img : PixImage) =
             Sg.fullScreenQuad
-            |> Sg.diffuseTexture (Mod.constant (PixTexture2d(PixImageMipMap [| img |], TextureParams.mipmapped) :> ITexture))
+            |> Sg.diffuseTexture (AVal.constant (PixTexture2d(PixImageMipMap [| img |], TextureParams.mipmapped) :> ITexture))
             |> Sg.shader {
                 do! DefaultSurfaces.diffuseTexture
             }
@@ -163,10 +161,10 @@ module Bla =
                 do! DefaultSurfaces.pointSpriteFragment
                 do! DefaultSurfaces.vertexColor
             }
-            |> Sg.uniform "PointSize" (Mod.constant 4.0)
-            |> Sg.depthTest (Mod.constant DepthTestMode.None)
-            |> Sg.viewTrafo (Mod.constant Trafo3d.Identity)
-            |> Sg.projTrafo (Mod.constant Trafo3d.Identity)
+            |> Sg.uniform "PointSize" (AVal.constant 4.0)
+            |> Sg.depthTest (AVal.constant DepthTestMode.None)
+            |> Sg.viewTrafo (AVal.constant Trafo3d.Identity)
+            |> Sg.projTrafo (AVal.constant Trafo3d.Identity)
             |> Sg.pass (RenderPass.after "asdasd" RenderPassOrder.Arbitrary RenderPass.main)
 
         let win = 
@@ -174,7 +172,7 @@ module Bla =
                 backend Backend.GL
             }
 
-        let current = Mod.init 0
+        let current = AVal.init 0
         win.Keyboard.DownWithRepeats.Values.Add ( fun k -> 
             match k with
             | Keys.Space -> transact(fun _ -> current.Value <- (current.Value + 1) % 2)
@@ -197,8 +195,8 @@ module Bla =
 
         let sg = 
             Sg.ofList [
-                Sg.onOff (current |> Mod.map (fun v -> v=0)) lsg      
-                Sg.onOff (current |> Mod.map (fun v -> v=1)) rsg           
+                Sg.onOff (current |> AVal.map (fun v -> v=0)) lsg      
+                Sg.onOff (current |> AVal.map (fun v -> v=1)) rsg           
             ]            
 
         win.Scene <- sg

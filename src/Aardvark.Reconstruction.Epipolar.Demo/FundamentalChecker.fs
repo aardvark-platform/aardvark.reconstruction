@@ -2,8 +2,7 @@ namespace Aardvark.Reconstruction.Epipolar.Demo
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
 open Aardvark.Rendering.Text
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
@@ -33,7 +32,6 @@ module Testy =
             ) |> Some
 
     let fundamentalChecker() =
-        Ag.initialize()
         Aardvark.Init()
         
         let win = window {
@@ -58,26 +56,26 @@ module Testy =
             |]
         let ftrs = ftrVol box.Min box.Max
 
-        let FMode = Mod.init 0
-        let speed = Mod.init 1.0
-        let focal = Mod.init 1.0
-        let fov = focal |> Mod.map (fun focal -> (2.0 * atan( 1.0/focal )) * Constant.DegreesPerRadian)
-        let aspect = win.Sizes |> Mod.map (fun s -> float s.X / float s.Y)
+        let FMode = AVal.init 0
+        let speed = AVal.init 1.0
+        let focal = AVal.init 1.0
+        let fov = focal |> AVal.map (fun focal -> (2.0 * atan( 1.0/focal )) * Constant.DegreesPerRadian)
+        let aspect = win.Sizes |> AVal.map (fun s -> float s.X / float s.Y)
         let cv = CameraView.LookAt((V3d.IOO*6.0),V3d.OOO,V3d.OOI)
                     |> DefaultCameraController.controlWithSpeed speed win.Mouse win.Keyboard win.Time
         let frust = 
-            Mod.custom (fun t -> 
+            AVal.custom (fun t -> 
                 let aspect = aspect.GetValue(t)
                 let fov = fov.GetValue(t)
                 Frustum.perspective fov 0.1 100.0 aspect
             )
 
         let rview = 
-            cv |> Mod.map (fun acv -> 
+            cv |> AVal.map (fun acv -> 
                 CameraView.lookAt acv.Location (acv.Location + acv.Forward) V3d.OOI
             )
         let rproj = 
-            Mod.custom (fun t ->
+            AVal.custom (fun t ->
                 let aspect = aspect.GetValue(t)
                 let focal = focal.GetValue(t)
                 let s = win.Sizes.GetValue(t)
@@ -92,10 +90,10 @@ module Testy =
                 }
             )
         let c1 = 
-            Mod.map2 (fun v p ->
+            AVal.map2 (fun v p ->
                 { view = v; proj = p }
             ) rview rproj
-        let c0 = Mod.init (c1.GetValue())
+        let c0 = AVal.init (c1.GetValue())
 
         let rand = RandomSystem()
         let noise (p : V2d) =
@@ -104,25 +102,25 @@ module Testy =
             
 
         let c0obs =
-            Mod.map (fun c0  -> 
+            AVal.map (fun c0  -> 
                 (ftrs |> Array.map (fun p -> Camera.projectUnsafe p c0))
             ) c0
 
         let c1obs =
-            Mod.map (fun c1 -> 
+            AVal.map (fun c1 -> 
                 (ftrs |> Array.map (fun p -> Camera.projectUnsafe p c1))
             ) c1
 
         let matches = 
-            Mod.map2 Array.zip c0obs c1obs
+            AVal.map2 Array.zip c0obs c1obs
 
         let sameness = 
-            Mod.map2 (fun real ref -> 
+            AVal.map2 (fun real ref -> 
                 Camera.sameness real ref
             ) c0 c1
 
         let Fres =
-            Mod.custom (fun t -> 
+            AVal.custom (fun t -> 
                 let FMode = FMode.GetValue t
                 if FMode = 0 then
                     let c0 = c0.GetValue t
@@ -135,17 +133,17 @@ module Testy =
                     | None -> M33d.Identity, V2d.OO, V2d.OO
             )
 
-        let F = Fres |> Mod.map(fun (F,_,_) -> F)        
-        let lsbr = Fres |> Mod.map(fun (_,lsbr,_) -> lsbr)
-        let rsbl = Fres |> Mod.map(fun (_,_,rsbl) -> rsbl)
+        let F = Fres |> AVal.map(fun (F,_,_) -> F)        
+        let lsbr = Fres |> AVal.map(fun (_,lsbr,_) -> lsbr)
+        let rsbl = Fres |> AVal.map(fun (_,_,rsbl) -> rsbl)
 
         let scale =
-            Mod.map2 (fun (c0 : Camera) (c1 : Camera) -> 
+            AVal.map2 (fun (c0 : Camera) (c1 : Camera) -> 
                 (c1.Location - c0.Location).Length
             ) c0 c1
 
         let mot =
-            Mod.custom (fun t -> 
+            AVal.custom (fun t -> 
                 let F = F.GetValue(t)
                 let c0 = c0.GetValue(t)
                 let c1 = c1.GetValue(t)
@@ -155,7 +153,7 @@ module Testy =
                 | mots -> getBestFittingMot c0 c1 mots
             )
         let c1e = 
-            Mod.custom (fun t -> 
+            AVal.custom (fun t -> 
                 let c0 = c0.GetValue(t)
                 let c1 = c1.GetValue(t)
                 let mot = mot.GetValue(t)
@@ -168,7 +166,7 @@ module Testy =
             )
 
         let riteText =
-            Mod.custom (fun t -> 
+            AVal.custom (fun t -> 
                 let focal = focal.GetValue(t)
                 let fov = fov.GetValue(t)
                 let frust = frust.GetValue(t)
@@ -206,7 +204,7 @@ module Testy =
             ]
 
         let topText =
-            Mod.custom (fun t -> 
+            AVal.custom (fun t -> 
                 let FMode = FMode.GetValue(t)
                 let FStr = 
                     if FMode = 0 then
@@ -222,7 +220,7 @@ module Testy =
                 FStr                
             )
         let leftText =
-            Mod.custom (fun t -> 
+            AVal.custom (fun t -> 
                 let s = sameness.GetValue(t)
                 let F = F.GetValue(t)
                 let lsbr = lsbr.GetValue(t)
@@ -272,35 +270,38 @@ module Testy =
                 do! DefaultSurfaces.diffuseTexture
                 do! DefaultSurfaces.simpleLighting
             }
-
+        let font = FontSquirrel.Indigo.Regular
         let leftTextSg =
-            Sg.text (Font.create "Times New Roman" FontStyle.Regular) C4b.White leftText
-            |> Sg.scale 0.025
-            |> Sg.translate -0.99 0.4 0.0
-            |> Sg.viewTrafo ~~Trafo3d.Identity
-            |> Sg.projTrafo ~~Trafo3d.Identity
+            Sg.empty
+            // Sg.text font C4b.White leftText
+            // |> Sg.scale 0.025
+            // |> Sg.translate -0.99 0.4 0.0
+            // |> Sg.viewTrafo ~~Trafo3d.Identity
+            // |> Sg.projTrafo ~~Trafo3d.Identity
 
         let riteTextSg =
-            Sg.text (Font.create "Times New Roman" FontStyle.Regular) C4b.White riteText
-            |> Sg.scale 0.025
-            |> Sg.translate 0.49 0.4 0.0
-            |> Sg.viewTrafo ~~Trafo3d.Identity
-            |> Sg.projTrafo ~~Trafo3d.Identity
+            Sg.empty
+            // Sg.text font C4b.White riteText
+            // |> Sg.scale 0.025
+            // |> Sg.translate 0.49 0.4 0.0
+            // |> Sg.viewTrafo ~~Trafo3d.Identity
+            // |> Sg.projTrafo ~~Trafo3d.Identity
 
         let topTextSg =
-            Sg.text (Font.create "Times New Roman" FontStyle.Regular) C4b.White topText
-            |> Sg.scale 0.03
-            |> Sg.translate -0.89 0.9 0.0
-            |> Sg.viewTrafo ~~Trafo3d.Identity
-            |> Sg.projTrafo ~~Trafo3d.Identity
+            Sg.empty
+            // Sg.text font C4b.White topText
+            // |> Sg.scale 0.03
+            // |> Sg.translate -0.89 0.9 0.0
+            // |> Sg.viewTrafo ~~Trafo3d.Identity
+            // |> Sg.projTrafo ~~Trafo3d.Identity
 
         let referenceCamSg =
-            c0 |> Mod.map (fun cam -> 
+            c0 |> AVal.map (fun cam -> 
                 Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.49 cam C4b.Blue
             ) |> Sg.dynamic
 
         let ftrSg1 =
-            Mod.custom (fun t -> 
+            AVal.custom (fun t -> 
                 let FMode = FMode.GetValue(t)
                 if FMode = 0 then Sg.empty
                 else
@@ -315,12 +316,12 @@ module Testy =
                                 DefaultSemantic.Colors, cs :> Array
                             ]
                         ) |> Sg.ofIndexedGeometry
-                          |> Sg.uniform "PointSize" (Mod.constant 3.5)
+                          |> Sg.uniform "PointSize" (AVal.constant 3.5)
                     s1
             ) |> Sg.dynamic
 
         let ftrSg2 =
-            Mod.custom (fun t -> 
+            AVal.custom (fun t -> 
                 let FMode = FMode.GetValue(t)
                 if FMode = 0 then Sg.empty
                 else
@@ -335,7 +336,7 @@ module Testy =
                                 DefaultSemantic.Colors, cs :> Array
                             ]
                         ) |> Sg.ofIndexedGeometry
-                          |> Sg.uniform "PointSize" (Mod.constant 2.0)
+                          |> Sg.uniform "PointSize" (AVal.constant 2.0)
                           |> Sg.pass (RenderPass.after "asd" RenderPassOrder.Arbitrary RenderPass.main)
                     s2
             ) |> Sg.dynamic
@@ -347,7 +348,7 @@ module Testy =
                 do! DefaultSurfaces.pointSprite
                 do! DefaultSurfaces.pointSpriteFragment
               }
-              |> Sg.depthTest (Mod.constant DepthTestMode.None)
+              //|> Sg.depthTest (AVal.constant DepthTestMode.None)
 
         let sg =
             Sg.ofList [
@@ -356,10 +357,10 @@ module Testy =
                     ftrSg
                     referenceCamSg
                 ]   
-                    //|> Sg.viewTrafo (cv |> Mod.map Aardvark.Base.CameraView.viewTrafo)
-                    //|> Sg.projTrafo (frust |> Mod.map Frustum.projTrafo)
-                    |> Sg.viewTrafo (c1e |> Mod.map (Camera.viewProjTrafo 0.1 100.0))
-                    |> Sg.projTrafo (Mod.constant Trafo3d.Identity)
+                    //|> Sg.viewTrafo (cv |> AVal.map Aardvark.Base.CameraView.viewTrafo)
+                    //|> Sg.projTrafo (frust |> AVal.map Frustum.projTrafo)
+                    |> Sg.viewTrafo (c1e |> AVal.map (Camera.viewProjTrafo 0.1 100.0))
+                    |> Sg.projTrafo (AVal.constant Trafo3d.Identity)
                 leftTextSg
                 riteTextSg
                 topTextSg

@@ -258,8 +258,7 @@ module Distortion =
 
     let sameness (l : Distortion) (r : Distortion) =
         if l.distortion.ForwardCoefficients.Length = r.distortion.ForwardCoefficients.Length then
-            V2d.Distance(l.principalPoint, r.principalPoint) +
-            //V2i.Distance(l.imageSize, r.imageSize) +
+            Vec.Distance(l.principalPoint, r.principalPoint) +
             (Array.zip l.distortion.ForwardCoefficients r.distortion.ForwardCoefficients
                 |> Array.sumBy (fun (l,r) -> abs (l-r)))
         else

@@ -2,8 +2,7 @@ namespace Aardvark.Reconstruction.Epipolar.Demo
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
 open Aardvark.Rendering.Text
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph

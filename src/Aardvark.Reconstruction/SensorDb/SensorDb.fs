@@ -30,20 +30,20 @@ module Sensors =
         let data = SensorCsv.Load(typeof<Marker>.Assembly.GetManifestResourceStream "Aardvark.Reconstruction.SensorDb.database.csv")
         let res = System.Collections.Generic.Dictionary<string, Map<string, V2d * V2i>>()
 
-        for r in data.Rows do
-            if r.``SensorWidth(pixels)``.HasValue && r.``SensorHeight(pixels)``.HasValue then
-                let s = V2d(float r.``SensorWidth(mm)``, r.``SensorHeight(mm)``)
-                let ps = V2i(r.``SensorWidth(pixels)``.Value, r.``SensorHeight(pixels)``.Value)
+        // for r in data.Rows do
+        //     if r.``SensorWidth(pixels)``.HasValue && r.``SensorHeight(pixels)``.HasValue then
+        //         let s = V2d(float r.``SensorWidth(mm)``, r.``SensorHeight(mm)``)
+        //         let ps = V2i(r.``SensorWidth(pixels)``.Value, r.``SensorHeight(pixels)``.Value)
 
-                let key = r.CameraMaker.Trim().ToLower()
-                let model = r.CameraModel.Trim().ToLower()
+        //         let key = r.CameraMaker.Trim().ToLower()
+        //         let model = r.CameraModel.Trim().ToLower()
 
-                let map =
-                    match res.TryGetValue key with
-                    | (true, m) -> m
-                    | _ -> Map.empty
+        //         let map =
+        //             match res.TryGetValue key with
+        //             | (true, m) -> m
+        //             | _ -> Map.empty
 
-                res.[key] <- Map.add model (s, ps) map
+        //         res.[key] <- Map.add model (s, ps) map
 
         res
         

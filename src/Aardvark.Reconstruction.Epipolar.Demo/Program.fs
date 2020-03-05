@@ -2,8 +2,7 @@
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
 open Aardvark.Rendering.Text
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
@@ -15,7 +14,7 @@ open FsCheck
 module Test = 
     [<EntryPoint>]
     let main argv =
-        //fundamentalChecker()
+        fundamentalChecker()
         //singleRenderTest()
         //runManyExamples()
         //runManyAndRenderIfBad()
@@ -23,7 +22,7 @@ module Test =
         //ArbDemo.manyArbsAndRenderIfBad()
         //Stats.runny()
         //Stats.statty()
-        Stats.runnyAndStatty()
+        //Stats.runnyAndStatty()
 
         printfn "Hello World from F#!"
         0 // return an integer exit code

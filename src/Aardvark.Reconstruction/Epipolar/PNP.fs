@@ -63,10 +63,11 @@ module ``DLT Camera recovery`` =
 
                     let inline s i = sol.[i]
                     let P = 
-                        M34d(
+                        M44d(
                             s 0, s 1, s 2, s 3,
                             s 4, s 5, s 6, s 7,
-                            s 8, s  9, s 10, s 11
+                            s 8, s  9, s 10, s 11,
+                            0.0, 0.0, 0.0, 1.0
                         )
 
                     let M = 
@@ -76,8 +77,8 @@ module ``DLT Camera recovery`` =
                             s 8, s 9, s 10
                         )
                 
-                    let P = P * sign1 M.Det
-            
+                    let P : M44d = P * sign1 M.Det
+                   
                     let Pi = P.Inverse
                     let pos = Pi.TransformPos V3d.Zero
             
@@ -89,16 +90,19 @@ module ``DLT Camera recovery`` =
                         R.Inverse, Q.Transposed
 
                     let D = 
-                        M33d(
-                            -sign1 ka.M00, 0.0, 0.0,
-                            0.0, -sign1 ka.M11, 0.0,
-                            0.0, 0.0, sign1 ka.M22
+                        M44d(
+                            -sign1 ka.M00, 0.0, 0.0, 0.0,
+                            0.0, -sign1 ka.M11, 0.0, 0.0,
+                            0.0, 0.0, sign1 ka.M22, 0.0,
+                            0.0, 0.0, 0.0, 1.0
                         )
 
                     let ra = D * ra
-                    let ka = M33d.op_Explicit ka * D
+                    let ka = ka * D
 
-                    let cv = { trafo = Euclidean3d(ra, ra * -pos)}
+                    let rot = failwith "ra"
+                    let trans = ra.TransformPos -pos
+                    let cv = { trafo = Euclidean3d(rot, trans)}
                     let ka = ka / -ka.M22
                     let fx = ka.M00
                     let fy = ka.M11

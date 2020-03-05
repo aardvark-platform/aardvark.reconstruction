@@ -2,8 +2,7 @@ namespace Aardvark.Reconstruction.Epipolar.Demo
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
 open Aardvark.Rendering.Text
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
@@ -84,7 +83,6 @@ module Testy2 =
                     + sprintf "F-lsbr:%A\n" lsbr
                     + sprintf "F-rsbl:%A\n" rsbl
 
-                Ag.initialize()
                 Aardvark.Init()
                 let win = window {
                     backend Backend.GL
@@ -92,14 +90,14 @@ module Testy2 =
             
                 Log.startTimed("Show")
 
-                let vpo = Mod.map2 (fun (v : Trafo3d[]) (p : Trafo3d[]) -> v.[0] * p.[0]) win.View win.Proj
-                let vp0 = c0 |> Mod.constant |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
-                let vp1 = c1 |> Mod.constant |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
-                let vph = ch |> Mod.constant |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
-                let vpf = cf |> Mod.constant |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
-                let vpp = cp |> Mod.constant |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
+                let vpo = AVal.map2 (fun (v : Trafo3d[]) (p : Trafo3d[]) -> v.[0] * p.[0]) win.View win.Proj
+                let vp0 = c0 |> AVal.constant |> AVal.map(Camera.viewProjTrafo 0.1 100.0)
+                let vp1 = c1 |> AVal.constant |> AVal.map(Camera.viewProjTrafo 0.1 100.0)
+                let vph = ch |> AVal.constant |> AVal.map(Camera.viewProjTrafo 0.1 100.0)
+                let vpf = cf |> AVal.constant |> AVal.map(Camera.viewProjTrafo 0.1 100.0)
+                let vpp = cp |> AVal.constant |> AVal.map(Camera.viewProjTrafo 0.1 100.0)
 
-                let current = Mod.init 0
+                let current = AVal.init 0
                 win.Keyboard.DownWithRepeats.Values.Add (fun k -> 
                     match k with
                     | Keys.Space -> 
@@ -115,7 +113,7 @@ module Testy2 =
                     | _ -> ()
                 )
 
-                let vt = current |> Mod.bind (fun c -> 
+                let vt = current |> AVal.bind (fun c -> 
                     match c with
                     | 0 -> vpo
                     | 1 -> vp0
@@ -127,7 +125,7 @@ module Testy2 =
                 )
 
                 let statusText =
-                    let t = current |> Mod.map (fun c -> 
+                    let t = current |> AVal.map (fun c -> 
                         match c with 
                         | 0 -> "Freefly"
                         | 1 -> "LeftCam"
@@ -153,10 +151,10 @@ module Testy2 =
                 let sg3d = 
                     (Generate.mkSg p3d)
                     |> Sg.viewTrafo vt
-                    |> Sg.projTrafo (Mod.constant Trafo3d.Identity)
+                    |> Sg.projTrafo (AVal.constant Trafo3d.Identity)
 
                 let ftrSg = 
-                    Mod.custom (fun t -> 
+                    AVal.custom (fun t -> 
                         let current = current.GetValue(t)
                         let obs = 
                             match current with 
@@ -184,8 +182,8 @@ module Testy2 =
                                     do! DefaultSurfaces.pointSprite
                                     do! DefaultSurfaces.pointSpriteFragment
                                   }
-                                  |> Sg.uniform "PointSize" (Mod.constant 3.5)
-                                  |> Sg.depthTest (Mod.constant DepthTestMode.None)
+                                  |> Sg.uniform "PointSize" (AVal.constant 3.5)
+                                  |> Sg.depthTest (AVal.constant DepthTestMode.None)
                             let s2 = 
                                 let ps = obs |> List.toArray |> Array.map (fun p -> V3d(p.X,p.Y,-1.0))
                                 let cs = Array.create ps.Length C4b.White
@@ -201,14 +199,14 @@ module Testy2 =
                                     do! DefaultSurfaces.pointSprite
                                     do! DefaultSurfaces.pointSpriteFragment
                                   }
-                                  |> Sg.uniform "PointSize" (Mod.constant 2.0)
-                                  |> Sg.depthTest (Mod.constant DepthTestMode.None)
+                                  |> Sg.uniform "PointSize" (AVal.constant 2.0)
+                                  |> Sg.depthTest (AVal.constant DepthTestMode.None)
                                   |> Sg.pass (RenderPass.after "asd" RenderPassOrder.Arbitrary RenderPass.main)
                             Sg.ofList [s1;s2]
                     ) |> Sg.dynamic
 
                 let frustSg =
-                    Mod.custom (fun t -> 
+                    AVal.custom (fun t -> 
                         let current = current.GetValue(t)
                         if current = 0 then
                             [
@@ -330,16 +328,15 @@ module Testy2 =
         Log.stop()
 
     let singleRenderTest() =
-        Ag.initialize()
         Aardvark.Init()
         let win = window {
             backend Backend.GL
         }
 
-        let counter = Mod.init 0
+        let counter = AVal.init 0
 
         let stuff =
-            counter |> Mod.map ( fun _ -> 
+            counter |> AVal.map ( fun _ -> 
                 Log.startTimed("Generate scene")
                 let c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d = Generate.randomScene()
                 //let (c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d) : Camera * Camera * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V2d>> * list<V3d * V3d * list<V3d>> * list<V3d * V3d * list<V3d>> = File.readAllBytes @"C:\temp\dump.bin" |> Pickler.pickler.UnPickle
@@ -422,27 +419,27 @@ module Testy2 =
                 Generate.mkSg p3d,c0,c1,cp,ch,cf,Ppoints2dc0,Hpoints2dc1,Fpoints2dc1,Ppoints2dc1
             )
     
-        let sg = Mod.map          (fun (x,_,_,_,_,_,_,_,_,_) -> x) stuff
-        let c0 = Mod.map          (fun (_,x,_,_,_,_,_,_,_,_) -> x) stuff
-        let c1 = Mod.map          (fun (_,_,x,_,_,_,_,_,_,_) -> x) stuff
-        let cp = Mod.map          (fun (_,_,_,x,_,_,_,_,_,_) -> x) stuff
-        let ch = Mod.map          (fun (_,_,_,_,x,_,_,_,_,_) -> x) stuff
-        let cf = Mod.map          (fun (_,_,_,_,_,x,_,_,_,_) -> x) stuff
-        let Ppoints2dc0 = Mod.map (fun (_,_,_,_,_,_,x,_,_,_) -> x) stuff
-        let Hpoints2dc1 = Mod.map (fun (_,_,_,_,_,_,_,x,_,_) -> x) stuff
-        let Fpoints2dc1 = Mod.map (fun (_,_,_,_,_,_,_,_,x,_) -> x) stuff
-        let Ppoints2dc1 = Mod.map (fun (_,_,_,_,_,_,_,_,_,x) -> x) stuff
+        let sg = AVal.map          (fun (x,_,_,_,_,_,_,_,_,_) -> x) stuff
+        let c0 = AVal.map          (fun (_,x,_,_,_,_,_,_,_,_) -> x) stuff
+        let c1 = AVal.map          (fun (_,_,x,_,_,_,_,_,_,_) -> x) stuff
+        let cp = AVal.map          (fun (_,_,_,x,_,_,_,_,_,_) -> x) stuff
+        let ch = AVal.map          (fun (_,_,_,_,x,_,_,_,_,_) -> x) stuff
+        let cf = AVal.map          (fun (_,_,_,_,_,x,_,_,_,_) -> x) stuff
+        let Ppoints2dc0 = AVal.map (fun (_,_,_,_,_,_,x,_,_,_) -> x) stuff
+        let Hpoints2dc1 = AVal.map (fun (_,_,_,_,_,_,_,x,_,_) -> x) stuff
+        let Fpoints2dc1 = AVal.map (fun (_,_,_,_,_,_,_,_,x,_) -> x) stuff
+        let Ppoints2dc1 = AVal.map (fun (_,_,_,_,_,_,_,_,_,x) -> x) stuff
     
         Log.startTimed("Show")
 
-        let vpo = Mod.map2 (fun (v : Trafo3d[]) (p : Trafo3d[]) -> v.[0] * p.[0]) win.View win.Proj
-        let vp0 = c0 |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
-        let vp1 = c1 |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
-        let vph = ch |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
-        let vpf = cf |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
-        let vpp = cp |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
+        let vpo = AVal.map2 (fun (v : Trafo3d[]) (p : Trafo3d[]) -> v.[0] * p.[0]) win.View win.Proj
+        let vp0 = c0 |> AVal.map(Camera.viewProjTrafo 0.1 100.0)
+        let vp1 = c1 |> AVal.map(Camera.viewProjTrafo 0.1 100.0)
+        let vph = ch |> AVal.map(Camera.viewProjTrafo 0.1 100.0)
+        let vpf = cf |> AVal.map(Camera.viewProjTrafo 0.1 100.0)
+        let vpp = cp |> AVal.map(Camera.viewProjTrafo 0.1 100.0)
 
-        let current = Mod.init 0
+        let current = AVal.init 0
         win.Keyboard.DownWithRepeats.Values.Add (fun k -> 
             match k with
             | Keys.Space -> 
@@ -460,7 +457,7 @@ module Testy2 =
             | _ -> ()
         )
 
-        let vt = current |> Mod.bind (fun c -> 
+        let vt = current |> AVal.bind (fun c -> 
             match c with
             | 0 -> vpo
             | 1 -> vp0
@@ -472,7 +469,7 @@ module Testy2 =
         )
 
         let statusText =
-            let t = current |> Mod.map (fun c -> 
+            let t = current |> AVal.map (fun c -> 
                 match c with 
                 | 0 -> "Freefly"
                 | 1 -> "LeftCam"
@@ -492,10 +489,10 @@ module Testy2 =
             sg
             |> Sg.dynamic
             |> Sg.viewTrafo vt
-            |> Sg.projTrafo (Mod.constant Trafo3d.Identity)
+            |> Sg.projTrafo (AVal.constant Trafo3d.Identity)
 
         let ftrSg = 
-            Mod.custom (fun t -> 
+            AVal.custom (fun t -> 
                 let current = current.GetValue(t)
 
                 let Ppoints2dc0 = Ppoints2dc0.GetValue(t)
@@ -528,8 +525,8 @@ module Testy2 =
                             do! DefaultSurfaces.pointSprite
                             do! DefaultSurfaces.pointSpriteFragment
                           }
-                          |> Sg.uniform "PointSize" (Mod.constant 3.5)
-                          |> Sg.depthTest (Mod.constant DepthTestMode.None)
+                          |> Sg.uniform "PointSize" (AVal.constant 3.5)
+                          |> Sg.depthTest (AVal.constant DepthTestMode.None)
                     let s2 = 
                         let ps = obs |> List.toArray |> Array.map (fun p -> V3d(p.X,p.Y,-1.0))
                         let cs = Array.create ps.Length C4b.White
@@ -545,14 +542,14 @@ module Testy2 =
                             do! DefaultSurfaces.pointSprite
                             do! DefaultSurfaces.pointSpriteFragment
                           }
-                          |> Sg.uniform "PointSize" (Mod.constant 2.0)
-                          |> Sg.depthTest (Mod.constant DepthTestMode.None)
+                          |> Sg.uniform "PointSize" (AVal.constant 2.0)
+                          |> Sg.depthTest (AVal.constant DepthTestMode.None)
                           |> Sg.pass (RenderPass.after "asd" RenderPassOrder.Arbitrary RenderPass.main)
                     Sg.ofList [s1;s2]
             ) |> Sg.dynamic
 
         let frustSg =
-            Mod.custom (fun t -> 
+            AVal.custom (fun t -> 
                 let current = current.GetValue(t)
                 let c0 = c0.GetValue(t)
                 let c1 = c1.GetValue(t)

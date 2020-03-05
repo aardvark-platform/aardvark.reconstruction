@@ -2,8 +2,7 @@ namespace Aardvark.Reconstruction.Epipolar.Demo
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
 open Aardvark.Rendering.Text
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
@@ -37,23 +36,23 @@ module ArbDemo =
 
     let showArbScenario 
         (win : ISimpleRenderWindow)
-        (scenario : IMod<ScenarioData>) 
-        (cf : IMod<Option<Camera>>) 
-        (ch : IMod<Option<Camera>>) 
-        (cp : IMod<Option<Camera>>) =
+        (scenario : aval<ScenarioData>) 
+        (cf : aval<Option<Camera>>) 
+        (ch : aval<Option<Camera>>) 
+        (cp : aval<Option<Camera>>) =
         
-        let c0 = scenario |> Mod.map (fun s -> s.cam0)
-        let c1 = scenario |> Mod.map (fun s -> s.cam1)
+        let c0 = scenario |> AVal.map (fun s -> s.cam0)
+        let c1 = scenario |> AVal.map (fun s -> s.cam1)
         Log.startTimed("Show")
 
-        let vpo = Mod.map2 (fun (v : Trafo3d[]) (p : Trafo3d[]) -> v.[0] * p.[0]) win.View win.Proj
-        let vp0 = c0 |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
-        let vp1 = c1 |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
-        let vph = ch |> Mod.map(Option.map(Camera.viewProjTrafo 0.1 100.0))
-        let vpf = cf |> Mod.map(Option.map(Camera.viewProjTrafo 0.1 100.0))
-        let vpp = cp |> Mod.map(Option.map(Camera.viewProjTrafo 0.1 100.0))
+        let vpo = AVal.map2 (fun (v : Trafo3d[]) (p : Trafo3d[]) -> v.[0] * p.[0]) win.View win.Proj
+        let vp0 = c0 |> AVal.map(Camera.viewProjTrafo 0.1 100.0)
+        let vp1 = c1 |> AVal.map(Camera.viewProjTrafo 0.1 100.0)
+        let vph = ch |> AVal.map(Option.map(Camera.viewProjTrafo 0.1 100.0))
+        let vpf = cf |> AVal.map(Option.map(Camera.viewProjTrafo 0.1 100.0))
+        let vpp = cp |> AVal.map(Option.map(Camera.viewProjTrafo 0.1 100.0))
 
-        let current = Mod.init 0
+        let current = AVal.init 0
         win.Keyboard.DownWithRepeats.Values.Add (fun k -> 
             match k with
             | Keys.Space -> 
@@ -69,19 +68,19 @@ module ArbDemo =
             | _ -> ()
         )
 
-        let vt = current |> Mod.bind (fun c -> 
+        let vt = current |> AVal.bind (fun c -> 
             match c with
             | 0 -> vpo
             | 1 -> vp0
             | 2 -> vp1
-            | 3 -> Mod.map2 (fun o t -> t |> Option.defaultValue o) vpo vph
-            | 4 -> Mod.map2 (fun o t -> t |> Option.defaultValue o) vpo vpf
-            | 5 -> Mod.map2 (fun o t -> t |> Option.defaultValue o) vpo vpp
+            | 3 -> AVal.map2 (fun o t -> t |> Option.defaultValue o) vpo vph
+            | 4 -> AVal.map2 (fun o t -> t |> Option.defaultValue o) vpo vpf
+            | 5 -> AVal.map2 (fun o t -> t |> Option.defaultValue o) vpo vpp
             | _ -> vpo
         )
 
         let statusText =
-            let t = current |> Mod.map (fun c -> 
+            let t = current |> AVal.map (fun c -> 
                 match c with 
                 | 0 -> "Freefly"
                 | 1 -> "LeftCam"
@@ -94,18 +93,18 @@ module ArbDemo =
             Sg.text (Font.create "Times New Roman" FontStyle.Regular) C4b.White t
             |> Sg.scale 0.1
             |> Sg.translate -0.9 -0.9 0.0
-            |> Sg.viewTrafo ~~Trafo3d.Identity
-            |> Sg.projTrafo ~~Trafo3d.Identity
+            |> Sg.viewTrafo (AVal.constant Trafo3d.Identity)
+            |> Sg.projTrafo (AVal.constant Trafo3d.Identity)
 
         let sg3d = 
             scenario
-            |> Mod.map sg3d
+            |> AVal.map sg3d
             |> Sg.dynamic
             |> Sg.viewTrafo vt
-            |> Sg.projTrafo (Mod.constant Trafo3d.Identity)
+            |> Sg.projTrafo (AVal.constant Trafo3d.Identity)
 
         let ftrSg = 
-            Mod.custom (fun t -> 
+            AVal.custom (fun t -> 
                 let current = current.GetValue(t)
                 let s = scenario.GetValue(t)
 
@@ -134,8 +133,8 @@ module ArbDemo =
                             do! DefaultSurfaces.pointSprite
                             do! DefaultSurfaces.pointSpriteFragment
                           }
-                          |> Sg.uniform "PointSize" (Mod.constant 3.5)
-                          |> Sg.depthTest (Mod.constant DepthTestMode.None)
+                          |> Sg.uniform "PointSize" (AVal.constant 3.5)
+                          |> Sg.depthTest (AVal.constant DepthTestMode.None)
                     let s2 = 
                         let ps = obs |> Array.map (fun p -> V3d(p.X,p.Y,-1.0))
                         let cs = Array.create ps.Length C4b.Black
@@ -151,14 +150,14 @@ module ArbDemo =
                             do! DefaultSurfaces.pointSprite
                             do! DefaultSurfaces.pointSpriteFragment
                           }
-                          |> Sg.uniform "PointSize" (Mod.constant 2.0)
-                          |> Sg.depthTest (Mod.constant DepthTestMode.None)
+                          |> Sg.uniform "PointSize" (AVal.constant 2.0)
+                          |> Sg.depthTest (AVal.constant DepthTestMode.None)
                           |> Sg.pass (RenderPass.after "asd" RenderPassOrder.Arbitrary RenderPass.main)
                     Sg.ofList [s1;s2]
             ) |> Sg.dynamic
 
         let frustSg =
-            Mod.custom (fun t -> 
+            AVal.custom (fun t -> 
                 let current = current.GetValue(t)
                 let c0 = c0.GetValue(t)
                 let c1 = c1.GetValue(t)
@@ -167,17 +166,17 @@ module ArbDemo =
                 let cp = cp.GetValue(t)
                 if current = 0 then
                     [
-                        yield Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.49 c0 C4b.Blue
-                        yield Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.49 c1 C4b.Blue
-                        yield! cf |> Option.map(fun c -> Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.50 c C4b.Green             )   |> Option.toList
-                        yield! ch |> Option.map(fun c -> Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.51 c C4b.Red               )   |> Option.toList
-                        yield! cp |> Option.map(fun c -> Aardvark.Reconstruction.Epipolar.Demo.Sg.camera ~~0.52 c (C4b(100,255,255,255)))   |> Option.toList
+                        yield Aardvark.Reconstruction.Epipolar.Demo.Sg.camera (AVal.constant 0.49) c0 C4b.Blue
+                        yield Aardvark.Reconstruction.Epipolar.Demo.Sg.camera (AVal.constant 0.49) c1 C4b.Blue
+                        yield! cf |> Option.map(fun c -> Aardvark.Reconstruction.Epipolar.Demo.Sg.camera (AVal.constant 0.50) c C4b.Green             )   |> Option.toList
+                        yield! ch |> Option.map(fun c -> Aardvark.Reconstruction.Epipolar.Demo.Sg.camera (AVal.constant 0.51) c C4b.Red               )   |> Option.toList
+                        yield! cp |> Option.map(fun c -> Aardvark.Reconstruction.Epipolar.Demo.Sg.camera (AVal.constant 0.52) c (C4b(100,255,255,255)))   |> Option.toList
                     ] |> Sg.ofList
                 else Sg.empty
             ) |> Sg.dynamic
 
         let outlineSg =
-            scenario |> Mod.map (fun s -> 
+            scenario |> AVal.map (fun s -> 
                 match s.points with
                 | AlmostLinearQuad(q,f) -> 
                     let q = flattenQuad q f
@@ -185,21 +184,24 @@ module ArbDemo =
                 | AlmostFlatVolume(b,f) -> 
                     let b = flattenBox b f
                     IndexedGeometryPrimitives.Box.wireBox b C4b.Yellow
+                | AlmostLinearVolume(b,f) -> 
+                    let b = linearizeBox b f
+                    IndexedGeometryPrimitives.Box.wireBox b C4b.Yellow
                 | InQuad q -> 
                     IndexedGeometryPrimitives.quad' q.P0 q.P1 q.P2 q.P3 C4b.Red    
                 | InVolume b -> 
                     IndexedGeometryPrimitives.Box.wireBox b C4b.Red            
             )
-            |> Mod.map Sg.ofIndexedGeometry
+            |> AVal.map Sg.ofIndexedGeometry
             |> Sg.dynamic
             |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.thickLine
                 do! DefaultSurfaces.vertexColor
             }
-            |> Sg.uniform "LineWidth" ~~1.0
+            |> Sg.uniform "LineWidth" (AVal.constant 1.0)
             |> Sg.viewTrafo vt
-            |> Sg.projTrafo (Mod.constant Trafo3d.Identity)
+            |> Sg.projTrafo (AVal.constant Trafo3d.Identity)
 
         let sg = 
             Sg.ofList [
@@ -217,20 +219,20 @@ module ArbDemo =
 
     let showScenario 
         (win : ISimpleRenderWindow)
-        (scenario : IMod<ScenarioData>) 
-        (co : IMod<Option<Camera>>)
-        (name : IMod<string>) =
+        (scenario : aval<ScenarioData>) 
+        (co : aval<Option<Camera>>)
+        (name : aval<string>) =
         
-        let c0 = scenario |> Mod.map (fun s -> s.cam0)
-        let c1 = scenario |> Mod.map (fun s -> s.cam1)
+        let c0 = scenario |> AVal.map (fun s -> s.cam0)
+        let c1 = scenario |> AVal.map (fun s -> s.cam1)
         Log.startTimed("Show")
 
-        let vpo = Mod.map2 (fun (v : Trafo3d[]) (p : Trafo3d[]) -> v.[0] * p.[0]) win.View win.Proj
-        let vp0 = c0 |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
-        let vp1 = c1 |> Mod.map(Camera.viewProjTrafo 0.1 100.0)
-        let vpot = co |> Mod.map(Option.map(Camera.viewProjTrafo 0.1 100.0))
+        let vpo = AVal.map2 (fun (v : Trafo3d[]) (p : Trafo3d[]) -> v.[0] * p.[0]) win.View win.Proj
+        let vp0 = c0 |> AVal.map(Camera.viewProjTrafo 0.1 100.0)
+        let vp1 = c1 |> AVal.map(Camera.viewProjTrafo 0.1 100.0)
+        let vpot = co |> AVal.map(Option.map(Camera.viewProjTrafo 0.1 100.0))
 
-        let current = Mod.init 0
+        let current = AVal.init 0
         win.Keyboard.DownWithRepeats.Values.Add (fun k -> 
             match k with
             | Keys.D1 -> 
@@ -249,22 +251,22 @@ module ArbDemo =
             // | 0 -> Log.line "freefly"
             // | 1 -> Log.line "Camera 0 original"
             // | 2 -> Log.line "Camera 1 original"
-            // | 3 -> Log.line "Camera 1 %s" (name |> Mod.force)
+            // | 3 -> Log.line "Camera 1 %s" (name |> AVal.force)
             // | _ -> ()
         )
 
-        let vt = current |> Mod.bind (fun c -> 
+        let vt = current |> AVal.bind (fun c -> 
             match c with
             | 0 -> vpo
             | 1 -> vp0
             | 2 -> vp1
-            | 3 -> Mod.map2 (fun o t -> t |> Option.defaultValue o) vpo vpot
+            | 3 -> AVal.map2 (fun o t -> t |> Option.defaultValue o) vpo vpot
             | _ -> vpo
         )
 
         let statusText =
             let t = 
-                Mod.map2 (fun c n -> 
+                AVal.map2 (fun c n -> 
                     match c with 
                     | 0 -> "Freefly"
                     | 1 -> "LeftCam"
@@ -280,13 +282,13 @@ module ArbDemo =
 
         let sg3d = 
             scenario
-            |> Mod.map sg3d
+            |> AVal.map sg3d
             |> Sg.dynamic
             |> Sg.viewTrafo vt
-            |> Sg.projTrafo (Mod.constant Trafo3d.Identity)
+            |> Sg.projTrafo (AVal.constant Trafo3d.Identity)
 
         let ftrSg = 
-            Mod.custom (fun t -> 
+            AVal.custom (fun t -> 
                 let current = current.GetValue(t)
                 let s = scenario.GetValue(t)
 
@@ -315,8 +317,8 @@ module ArbDemo =
                             do! DefaultSurfaces.pointSprite
                             do! DefaultSurfaces.pointSpriteFragment
                           }
-                          |> Sg.uniform "PointSize" (Mod.constant 3.5)
-                          |> Sg.depthTest (Mod.constant DepthTestMode.None)
+                          |> Sg.uniform "PointSize" (AVal.constant 3.5)
+                          |> Sg.depthTest (AVal.constant DepthTestMode.None)
                     let s2 = 
                         let ps = obs |> Array.map (fun p -> V3d(p.X,p.Y,-1.0))
                         let cs = Array.create ps.Length C4b.Black
@@ -332,14 +334,14 @@ module ArbDemo =
                             do! DefaultSurfaces.pointSprite
                             do! DefaultSurfaces.pointSpriteFragment
                           }
-                          |> Sg.uniform "PointSize" (Mod.constant 2.0)
-                          |> Sg.depthTest (Mod.constant DepthTestMode.None)
+                          |> Sg.uniform "PointSize" (AVal.constant 2.0)
+                          |> Sg.depthTest (AVal.constant DepthTestMode.None)
                           |> Sg.pass (RenderPass.after "asd" RenderPassOrder.Arbitrary RenderPass.main)
                     Sg.ofList [s1;s2]
             ) |> Sg.dynamic
 
         let frustSg =
-            Mod.custom (fun t -> 
+            AVal.custom (fun t -> 
                 let current = current.GetValue(t)
                 let c0 = c0.GetValue(t)
                 let c1 = c1.GetValue(t)
@@ -354,7 +356,7 @@ module ArbDemo =
             ) |> Sg.dynamic
 
         let outlineSg =
-            scenario |> Mod.map (fun s -> 
+            scenario |> AVal.map (fun s -> 
                 match s.points with
                 | AlmostLinearQuad(q,f) -> 
                     let q = flattenQuad q f
@@ -370,7 +372,7 @@ module ArbDemo =
                 | InVolume b -> 
                     IndexedGeometryPrimitives.Box.wireBox b C4b.Red            
             )
-            |> Mod.map Sg.ofIndexedGeometry
+            |> AVal.map Sg.ofIndexedGeometry
             |> Sg.dynamic
             |> Sg.shader {
                 do! DefaultSurfaces.trafo
@@ -379,7 +381,7 @@ module ArbDemo =
             }
             |> Sg.uniform "LineWidth" ~~1.0
             |> Sg.viewTrafo vt
-            |> Sg.projTrafo (Mod.constant Trafo3d.Identity)
+            |> Sg.projTrafo (AVal.constant Trafo3d.Identity)
 
         let sg = 
             Sg.ofList [
@@ -395,15 +397,13 @@ module ArbDemo =
         win.Run()
 
     let singleArbTest() =
-
-        Ag.initialize()
         Aardvark.Init()
         let win = window {
             backend Backend.GL
         }
         let rand = RandomSystem()
 
-        let counter = Mod.init 0
+        let counter = AVal.init 0
         win.Keyboard.DownWithRepeats.Values.Add (function 
             | Keys.Enter -> 
                 transact (fun _ -> counter.Value <- counter.Value + 1)
@@ -411,7 +411,7 @@ module ArbDemo =
         )
         
         let stuff =
-            counter |> Mod.map ( fun _ -> 
+            counter |> AVal.map ( fun _ -> 
                 Log.startTimed("Generate Scenario")
 
                 let scenario = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genVolumeScenario 
@@ -498,9 +498,9 @@ module ArbDemo =
                 scene, co, name
             )
     
-        let scene = Mod.map       (fun (x,_,_) -> x) stuff
-        let co = Mod.map          (fun (_,x,_) -> x) stuff
-        let name = Mod.map        (fun (_,_,x) -> x) stuff
+        let scene = AVal.map       (fun (x,_,_) -> x) stuff
+        let co = AVal.map          (fun (_,x,_) -> x) stuff
+        let name = AVal.map        (fun (_,_,x) -> x) stuff
         
         showScenario win scene co name
 
@@ -583,7 +583,6 @@ module ArbDemo =
         Log.stop()        
         if bad |> Option.isNone then Log.line "juhu"
         else
-            Ag.initialize()
             Aardvark.Init()
             let win = window {
                 backend Backend.GL
