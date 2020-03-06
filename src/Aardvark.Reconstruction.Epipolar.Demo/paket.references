@@ -6,6 +6,7 @@ Aardvark.Application.Slim
 Aardvark.Application.Utilities
 Aardvark.Rendering.Text
 MiniCV
+FShade
 FsCheck
 Expecto
 Expecto.FsCheck 

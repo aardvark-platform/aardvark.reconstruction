@@ -270,30 +270,30 @@ module Testy =
                 do! DefaultSurfaces.diffuseTexture
                 do! DefaultSurfaces.simpleLighting
             }
-        let font = FontSquirrel.Indigo.Regular
+        let font = FontSquirrel.Indubitably.Regular
         let leftTextSg =
-            Sg.empty
-            // Sg.text font C4b.White leftText
-            // |> Sg.scale 0.025
-            // |> Sg.translate -0.99 0.4 0.0
-            // |> Sg.viewTrafo ~~Trafo3d.Identity
-            // |> Sg.projTrafo ~~Trafo3d.Identity
+            //Sg.empty
+            Sg.text font C4b.White leftText
+            |> Sg.scale 0.025
+            |> Sg.translate -0.99 0.4 0.0
+            |> Sg.viewTrafo ~~Trafo3d.Identity
+            |> Sg.projTrafo ~~Trafo3d.Identity
 
         let riteTextSg =
-            Sg.empty
-            // Sg.text font C4b.White riteText
-            // |> Sg.scale 0.025
-            // |> Sg.translate 0.49 0.4 0.0
-            // |> Sg.viewTrafo ~~Trafo3d.Identity
-            // |> Sg.projTrafo ~~Trafo3d.Identity
+            //Sg.empty
+            Sg.text font C4b.White riteText
+            |> Sg.scale 0.025
+            |> Sg.translate 0.49 0.4 0.0
+            |> Sg.viewTrafo ~~Trafo3d.Identity
+            |> Sg.projTrafo ~~Trafo3d.Identity
 
         let topTextSg =
-            Sg.empty
-            // Sg.text font C4b.White topText
-            // |> Sg.scale 0.03
-            // |> Sg.translate -0.89 0.9 0.0
-            // |> Sg.viewTrafo ~~Trafo3d.Identity
-            // |> Sg.projTrafo ~~Trafo3d.Identity
+            //Sg.empty
+            Sg.text font C4b.White topText
+            |> Sg.scale 0.03
+            |> Sg.translate -0.89 0.9 0.0
+            |> Sg.viewTrafo ~~Trafo3d.Identity
+            |> Sg.projTrafo ~~Trafo3d.Identity
 
         let referenceCamSg =
             c0 |> AVal.map (fun cam -> 

@@ -13,3 +13,5 @@ bin/Debug
 /.paket
 /Aardvark.log
 symbolCache.db
+**/.DS_Store
+**/Aardvark.log
