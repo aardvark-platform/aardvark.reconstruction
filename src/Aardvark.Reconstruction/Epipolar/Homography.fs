@@ -251,7 +251,7 @@ module Homography =
                 let motionOf (R : M33d, t : V3d, n : V3d) =
                     try
                         //https://github.com/JimZhou-001/opencv/commit/dc39ab67fc489ccf5dafbeb6ecbff211f9236b7f
-                        let Mo = if R.Det <= 0.0 then -1.0 * R else R
+                        let Mo = if R.Determinant <= 0.0 then -1.0 * R else R
 
                         let M = Mo.ToOrthoNormal()
                         let trafo = Euclidean3d(Rot3d.FromM33d(M,eps),t.Normalized)

@@ -15,7 +15,18 @@
             "console": "integratedTerminal",
             "stopAtEntry": false,
             "internalConsoleOptions": "openOnSessionStart"
-        },
+        },{
+            "name": "Epipolar UnitTest",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/bin/Debug/netcoreapp3.1/Aardvark.Reconstruction.Epipolar.UnitTest.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/bin/Debug/netcoreapp3.1/",
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            "internalConsoleOptions": "openOnSessionStart"
+        }
         {
             "name": "ModelEstimation Demo",
             "type": "coreclr",

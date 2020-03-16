@@ -3,13 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29709.97
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Reconstruction", "Aardvark.Reconstruction\Aardvark.Reconstruction.fsproj", "{C07BD848-6DC0-4A04-9B90-413F7A73174A}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Reconstruction", "Aardvark.Reconstruction\Aardvark.Reconstruction.fsproj", "{C07BD848-6DC0-4A04-9B90-413F7A73174A}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Reconstruction.Epipolar.Demo", "Aardvark.Reconstruction.Epipolar.Demo\Aardvark.Reconstruction.Epipolar.Demo.fsproj", "{5ED657C9-9D7F-4C71-AFE2-816DA1CAE1B5}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Reconstruction.Epipolar.Demo", "Aardvark.Reconstruction.Epipolar.Demo\Aardvark.Reconstruction.Epipolar.Demo.fsproj", "{5ED657C9-9D7F-4C71-AFE2-816DA1CAE1B5}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Test", "Test\Test.fsproj", "{327602B0-750D-4AD9-B5AB-1B3B29C05AA9}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test", "Test\Test.fsproj", "{327602B0-750D-4AD9-B5AB-1B3B29C05AA9}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Reconstruction.ModelEstimation.Demo", "Aardvark.Reconstruction.ModelEstimation.Demo\Aardvark.Reconstruction.ModelEstimation.Demo.fsproj", "{1D8747F8-0350-413E-A5F7-DD41F883B735}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Reconstruction.ModelEstimation.Demo", "Aardvark.Reconstruction.ModelEstimation.Demo\Aardvark.Reconstruction.ModelEstimation.Demo.fsproj", "{1D8747F8-0350-413E-A5F7-DD41F883B735}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Reconstruction.Epipolar.UnitTest", "Aardvark.Reconstruction.Epipolar.UnitTest\Aardvark.Reconstruction.Epipolar.UnitTest.fsproj", "{B03450CE-18DD-4C32-A1B9-101A34F87327}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{1D8747F8-0350-413E-A5F7-DD41F883B735}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1D8747F8-0350-413E-A5F7-DD41F883B735}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1D8747F8-0350-413E-A5F7-DD41F883B735}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B03450CE-18DD-4C32-A1B9-101A34F87327}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B03450CE-18DD-4C32-A1B9-101A34F87327}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B03450CE-18DD-4C32-A1B9-101A34F87327}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B03450CE-18DD-4C32-A1B9-101A34F87327}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

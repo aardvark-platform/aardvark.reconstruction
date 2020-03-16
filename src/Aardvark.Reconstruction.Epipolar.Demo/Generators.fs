@@ -187,15 +187,15 @@ module Generate =
 
             let FQuads =
                 let (_,pno,pp) = basequads |> List.last 
-                let pn =  (Rot3d(V3d.III.Normalized,45.0*Constant.RadiansPerDegree).Transform pno).Normalized
+                let pn =  (Rot3d(45.0*Constant.RadiansPerDegree, V3d.III.Normalized).Transform pno).Normalized
                 let n1 = Vec.cross pn V3d.OOI
                 let n2 = Vec.cross n1 pn
                 let pp2 = pp + V3d.OII * scale * 0.25
-                let pn2 = (Rot3d(V3d.PNN.Normalized,60.0*Constant.RadiansPerDegree).Transform pno).Normalized
+                let pn2 = (Rot3d(60.0*Constant.RadiansPerDegree, V3d.PNN.Normalized).Transform pno).Normalized
                 let n12 = Vec.cross pn2 V3d.OOI
                 let n22 = Vec.cross n12 pn2
                 let pp3 = pp2 + V3d.PON * scale * 0.25
-                let pn3 = (Rot3d(V3d.OOI.Normalized,90.0*Constant.RadiansPerDegree).Transform pn2).Normalized
+                let pn3 = (Rot3d(90.0*Constant.RadiansPerDegree, V3d.OOI.Normalized).Transform pn2).Normalized
                 let n13 = Vec.cross pn3 V3d.OOI
                 let n23 = Vec.cross n13 pn3
                 [   1,pn, pp
@@ -256,6 +256,7 @@ module Generate =
             
         c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d
 
+[<AutoOpen>]
 module Lala =
     let rand = RandomSystem()
 
@@ -680,7 +681,7 @@ module Lala =
             { c0 with view = CameraView.lookAt c0.Location (c0.Location + fw1) c0.Up }
         | NormalAndRoll a -> 
             let fw1 = (dataBb.Center - c0.Location).Normalized
-            let up1 = Rot3d(fw1,a).Transform c0.Up
+            let up1 = Rot3d(a,fw1).Transform c0.Up
             { c0 with view = CameraView.lookAt c0.Location (c0.Location + fw1) up1 }
 
     type ScenarioData =
@@ -703,10 +704,8 @@ module Lala =
     module Scenario =
         let getData = function HomographyScenario d -> d | FundamentalScenario d -> d
 
-    let genScenarioData (noise : bool) (cam0 : Camera) (scale : float) (apts : ArbPoints) =
+    let genScenarioData (pointcount : int) (noise : bool) (cam0 : Camera) (scale : float) (apts : ArbPoints) =
         gen {
-            let pointcount = 300
-            //let! pointcount = intBetween 768 768     
 
             let! pts3d = genPoints apts pointcount
             let bb = dataBounds cam0 scale
@@ -758,7 +757,8 @@ module Lala =
                 let bounds = dataBounds cam0 scale
                 InVolume bounds
 
-            let! data = genScenarioData true cam0 scale apts
+            let! ct = intBetween 128 256
+            let! data = genScenarioData ct true cam0 scale apts
             let scenario = FundamentalScenario data
             return scenario
         }    
@@ -779,7 +779,8 @@ module Lala =
             let! q = arbQuadFacing45 cam0 scale             
             let apts = InQuad q
 
-            let! data = genScenarioData true cam0 scale apts
+            let! ct = intBetween 128 256
+            let! data = genScenarioData ct true cam0 scale apts
             let scenario = HomographyScenario data
             return scenario
         }    
@@ -797,7 +798,8 @@ module Lala =
             let cam0 = { view = cv0; proj = proj0 }
             let! apts = genArbPoints cam0 scale
 
-            let! data = genScenarioData noise cam0 scale apts
+            let! ct = intBetween 128 256
+            let! data = genScenarioData ct noise cam0 scale apts
             let! scenario = 
                 match apts with
                 | InVolume _ -> FundamentalScenario data |> Gen.constant

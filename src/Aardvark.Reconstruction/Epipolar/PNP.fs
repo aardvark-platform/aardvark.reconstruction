@@ -77,7 +77,7 @@ module ``DLT Camera recovery`` =
                             s 8, s 9, s 10
                         )
                 
-                    let P : M44d = P * sign1 M.Det
+                    let P : M44d = P * sign1 M.Determinant
                    
                     let Pi = P.Inverse
                     let pos = Pi.TransformPos V3d.Zero

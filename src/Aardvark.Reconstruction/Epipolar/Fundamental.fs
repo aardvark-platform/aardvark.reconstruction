@@ -185,10 +185,10 @@ module FundamentalMatrix =
             let R2 = (C.Transposed + M33d.crossProductMatrix(t2) * En.Transposed).ToOrthoNormal().Transposed           
 
             [
-                { trafo = Euclidean3d(R1, R1 * t1); isNormalized = true }
-                { trafo = Euclidean3d(R1, R1 * t2); isNormalized = true }
-                { trafo = Euclidean3d(R2, R2 * t1); isNormalized = true }
-                { trafo = Euclidean3d(R2, R2 * t2); isNormalized = true }
+                { trafo = Euclidean3d(Rot3d.FromM33d R1, R1 * t1); isNormalized = true }
+                { trafo = Euclidean3d(Rot3d.FromM33d R1, R1 * t2); isNormalized = true }
+                { trafo = Euclidean3d(Rot3d.FromM33d R2, R2 * t1); isNormalized = true }
+                { trafo = Euclidean3d(Rot3d.FromM33d R2, R2 * t2); isNormalized = true }
             ]
 
         | None -> 
@@ -226,7 +226,7 @@ module FundamentalMatrix =
 
             let check (l : list<CameraMotion>) (R : M33d, t : V3d) =
                 try
-                    let m = { trafo = Euclidean3d(R, t); isNormalized = true }
+                    let m = { trafo = Euclidean3d(Rot3d.FromM33d R, t); isNormalized = true }
 
                     match referencePoints with
                         | [] ->

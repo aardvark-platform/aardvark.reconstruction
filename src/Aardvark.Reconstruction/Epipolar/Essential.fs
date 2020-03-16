@@ -20,7 +20,7 @@ module EssentialMatrix =
         OpenCV.fivepoint ls rs 
             |> Array.toList
             |> List.choose (fun E -> 
-                if abs E.Det < 1E-5 then
+                if abs E.Determinant < 1E-5 then
                     let Et = E.Transposed
 
                     let mutable rsbl = V2d.Zero

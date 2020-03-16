@@ -14,11 +14,11 @@ open FsCheck
 module Test = 
     [<EntryPoint>]
     let main argv =
-        fundamentalChecker()
+        //fundamentalChecker()
         //singleRenderTest()
         //runManyExamples()
         //runManyAndRenderIfBad()
-        //ArbDemo.singleArbTest()
+        ArbDemo.singleArbTest()
         //ArbDemo.manyArbsAndRenderIfBad()
         //Stats.runny()
         //Stats.statty()
