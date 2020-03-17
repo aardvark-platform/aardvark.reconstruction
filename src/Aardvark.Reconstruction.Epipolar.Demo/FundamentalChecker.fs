@@ -18,18 +18,20 @@ module Testy =
         match mots with
         | [] -> None
         | _ -> 
-            mots |> List.maxBy (fun mot -> 
-                let r = c0 + mot
-                let dir = (1.0 + Vec.dot c1.Forward r.Forward)/2.0 * 1000.0
-                let rup = r.Up
-                let c1up = c1.Up
-                let doo = Vec.dot c1up rup
-                let don = (1.0 + doo)/2.0
-                let up = (don*1000.0)
-                // let up = (1.0 + Vec.dot c1.Up r.Up)/2.0 * 1000.0                |> int
-                let pos = -Vec.length (c1.Location - r.Location)
-                dir + up + pos
-            ) |> Some
+            let scores =
+                mots |> List.map (fun mot -> 
+                    let r = c0 + mot
+                    let dir = (1.0 + Vec.dot c1.Forward r.Forward)/2.0 * 1000.0
+                    let rup = r.Up
+                    let c1up = c1.Up
+                    let doo = Vec.dot c1up rup
+                    let don = (1.0 + doo)/2.0
+                    let up = (don*1000.0)
+                    // let up = (1.0 + Vec.dot c1.Up r.Up)/2.0 * 1000.0                |> int
+                    let pos = -Vec.length (c1.Location - r.Location)
+                    dir + up + pos, mot
+                )
+            scores |> List.maxBy fst |> snd |> Some
 
     let fundamentalChecker() =
         Aardvark.Init()

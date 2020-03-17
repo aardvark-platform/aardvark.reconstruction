@@ -258,9 +258,9 @@ module Generate =
 
 [<AutoOpen>]
 module Lala =
-    let rand = RandomSystem()
 
     let floatBetween min max =
+        let rand = RandomSystem()
         let size = max - min
         gen { return rand.UniformDouble() * size + min }
         // //Gen.choose (0, System.Int32.MaxValue)
@@ -270,6 +270,7 @@ module Lala =
         // |> Gen.map (fun i -> (float (abs i) / float System.Int32.MaxValue) * size + min)
 
     let intBetween min max =
+        let rand = RandomSystem()
         let range = max - min
         gen { return rand.UniformInt(range+1) + min }
 
@@ -296,6 +297,7 @@ module Lala =
         }        
 
     let randomV3dArray (n : int) (b : Box3d) =
+        let rand = RandomSystem()
         Array.init n (fun _ -> rand.UniformV3d(b))
 
     let arbPos =
@@ -370,9 +372,9 @@ module Lala =
             | _ -> return failwith "no"
         }
 
-    
-    let gauss = RandomGaussian(rand)
     let nextGaussian sigma =
+        let rand = RandomSystem()
+        let gauss = RandomGaussian(rand)
         gen { return gauss.GetDouble(0.0,sigma) |> abs |> clamp 0.0 1.0 }
 
     let applyNoise (kind : NoiseKind) (ms : (V2d*V2d)[]) =
@@ -522,6 +524,20 @@ module Lala =
                 return failwith "no"
         }
 
+    let genQuadApts (cam : Camera) (scale : float) =
+        gen {
+            let! i = Gen.choose(0,1)
+            match i with
+            | 0 -> 
+                let! q = arbQuadFacing45 cam scale 
+                let! t = floatBetween 0.001 0.2
+                return AlmostLinearQuad(q,t) 
+            | 1 -> 
+                let! q = arbQuadFacing45 cam scale             
+                return InQuad q  
+            | _ -> 
+                return failwith "unreachable"
+        }            
 
     let genArbPoints (cam : Camera) (scale : float) =
         gen {
@@ -586,82 +602,81 @@ module Lala =
         let s = V3d(f,2.0*f,1.0)
         b.ScaledFromCenterBy(s)
 
-    let rec genPoints (a : ArbPoints) (ct : int) =
-        gen {
-            match a with
-            | AlmostLinearQuad(q,lineness) ->   
-                let nq = flattenQuad q lineness 
-                return! genPoints (InQuad nq) ct
+    let rec randomPoints (a : ArbPoints) (ct : int) =
+        match a with
+        | AlmostLinearQuad(q,lineness) ->   
+            let nq = flattenQuad q lineness 
+            randomPoints (InQuad nq) ct
 
-            | AlmostFlatVolume(b,flatness) -> 
-                let nb = flattenBox b flatness
-                return! genPoints (InVolume nb) ct
-            | AlmostLinearVolume(b,lineness) -> 
-                let nb = linearizeBox b lineness
-                return! genPoints (InVolume nb) ct
+        | AlmostFlatVolume(b,flatness) -> 
+            let nb = flattenBox b flatness
+            randomPoints (InVolume nb) ct
+        | AlmostLinearVolume(b,lineness) -> 
+            let nb = linearizeBox b lineness
+            randomPoints (InVolume nb) ct
 
-            | InQuad q -> 
-                let p = q.ComputeCentroid()
-                let n = q.Normal             |> Vec.normalize
-                let dy = Vec.cross n V3d.OOI |> Vec.normalize
-                let dx = Vec.cross dy n      |> Vec.normalize
-                let t = Euclidean3d(Rot3d.FromM33d(M33d.FromCols(dx,dy,n)), p)
+        | InQuad q -> 
+            let p = q.ComputeCentroid()
+            let n = q.Normal             |> Vec.normalize
+            let dy = Vec.cross n V3d.OOI |> Vec.normalize
+            let dx = Vec.cross dy n      |> Vec.normalize
+            let t = Euclidean3d(Rot3d.FromM33d(M33d.FromCols(dx,dy,n)), p)
 
-                let qp0 = t.InvTransformPos(q.P0)
-                let qp1 = t.InvTransformPos(q.P1)
-                let qp2 = t.InvTransformPos(q.P2)
-                let qp3 = t.InvTransformPos(q.P3)
+            let qp0 = t.InvTransformPos(q.P0)
+            let qp1 = t.InvTransformPos(q.P1)
+            let qp2 = t.InvTransformPos(q.P2)
+            let qp3 = t.InvTransformPos(q.P3)
 
-                let minx = min (min (min qp0.X qp1.X) qp2.X) qp3.X
-                let maxx = max (max (max qp0.X qp1.X) qp2.X) qp3.X
-                let miny = min (min (min qp0.Y qp1.Y) qp2.Y) qp3.Y
-                let maxy = max (max (max qp0.Y qp1.Y) qp2.Y) qp3.Y
+            let minx = min (min (min qp0.X qp1.X) qp2.X) qp3.X
+            let maxx = max (max (max qp0.X qp1.X) qp2.X) qp3.X
+            let miny = min (min (min qp0.Y qp1.Y) qp2.Y) qp3.Y
+            let maxy = max (max (max qp0.Y qp1.Y) qp2.Y) qp3.Y
 
-                let qct = float ct/float 4 |> ceil |> int
-                let bla = randomV3dArray qct (Box3d(V3d(minx,miny,0.0), V3d(0.0,0.0,0.0)))
-                let  bl  = bla |> Array.map t.TransformPos
-                let bra = randomV3dArray qct (Box3d(V3d(0.0,miny,0.0), V3d(maxx,0.0,0.0)))
-                let  br  = bra |> Array.map t.TransformPos
-                let tla = randomV3dArray qct (Box3d(V3d(minx,0.0,0.0), V3d(0.0,maxy,0.0)))
-                let  tl  = tla |> Array.map t.TransformPos
-                let tra = randomV3dArray qct (Box3d(V3d(0.0,0.0,0.0), V3d(maxx,maxy,0.0)))
-                let  tr  = tra |> Array.map t.TransformPos
-                
-                return Array.concat [|bl;br;tr;tl|]
-            | InVolume b -> 
-                let bct = float ct/float 8 |> ceil |> int
-                let Nx = b.Min.X
-                let Ny = b.Min.Y
-                let Nz = b.Min.Z
-                let Ix = b.Max.X
-                let Iy = b.Max.Y
-                let Iz = b.Max.Z
-                let Ox = (Ix + Nx) / 2.0
-                let Oy = (Iy + Ny) / 2.0
-                let Oz = (Iz + Nz) / 2.0
+            let qct = float ct/float 4 |> ceil |> int
+            let bla = randomV3dArray qct (Box3d(V3d(minx,miny,0.0), V3d(0.0,0.0,0.0)))
+            let  bl  = bla |> Array.map t.TransformPos
+            let bra = randomV3dArray qct (Box3d(V3d(0.0,miny,0.0), V3d(maxx,0.0,0.0)))
+            let  br  = bra |> Array.map t.TransformPos
+            let tla = randomV3dArray qct (Box3d(V3d(minx,0.0,0.0), V3d(0.0,maxy,0.0)))
+            let  tl  = tla |> Array.map t.TransformPos
+            let tra = randomV3dArray qct (Box3d(V3d(0.0,0.0,0.0), V3d(maxx,maxy,0.0)))
+            let  tr  = tra |> Array.map t.TransformPos
+            
+            Array.concat [|bl;br;tr;tl|]
+        | InVolume b -> 
+            let bct = float ct/float 8 |> ceil |> int
+            let Nx = b.Min.X
+            let Ny = b.Min.Y
+            let Nz = b.Min.Z
+            let Ix = b.Max.X
+            let Iy = b.Max.Y
+            let Iz = b.Max.Z
+            let Ox = (Ix + Nx) / 2.0
+            let Oy = (Iy + Ny) / 2.0
+            let Oz = (Iz + Nz) / 2.0
 
-                let inline bb (x0 : float) y0 z0 (x1 : float) y1 z1 = Box3d(V3d(x0,y0,z0),V3d(x1,y1,z1))
-                let b0 = bb Nx Oy Nz Ox Iy Oz
-                let b1 = bb Nx Oy Oz Ox Iy Iz
-                let b2 = bb Ox Oy Oz Ix Iy Iz
-                let b3 = bb Ox Oy Nz Ix Iy Oz
-                let b4 = bb Nx Ny Nz Ox Oy Oz
-                let b5 = bb Nx Ny Oz Ox Oy Iz
-                let b6 = bb Ox Ny Oz Ix Oy Iz
-                let b7 = bb Ox Ny Nz Ix Oy Oz
+            let inline bb (x0 : float) y0 z0 (x1 : float) y1 z1 = Box3d(V3d(x0,y0,z0),V3d(x1,y1,z1))
+            let b0 = bb Nx Oy Nz Ox Iy Oz
+            let b1 = bb Nx Oy Oz Ox Iy Iz
+            let b2 = bb Ox Oy Oz Ix Iy Iz
+            let b3 = bb Ox Oy Nz Ix Iy Oz
+            let b4 = bb Nx Ny Nz Ox Oy Oz
+            let b5 = bb Nx Ny Oz Ox Oy Iz
+            let b6 = bb Ox Ny Oz Ix Oy Iz
+            let b7 = bb Ox Ny Nz Ix Oy Oz
 
-                let b0a = randomV3dArray bct b0
-                let b1a = randomV3dArray bct b1
-                let b2a = randomV3dArray bct b2
-                let b3a = randomV3dArray bct b3
-                let b4a = randomV3dArray bct b4
-                let b5a = randomV3dArray bct b5
-                let b6a = randomV3dArray bct b6
-                let b7a = randomV3dArray bct b7
+            let b0a = randomV3dArray bct b0
+            let b1a = randomV3dArray bct b1
+            let b2a = randomV3dArray bct b2
+            let b3a = randomV3dArray bct b3
+            let b4a = randomV3dArray bct b4
+            let b5a = randomV3dArray bct b5
+            let b6a = randomV3dArray bct b6
+            let b7a = randomV3dArray bct b7
 
-                let ps = Array.concat [|b0a; b1a; b2a; b3a; b4a; b5a; b6a; b7a|]
-                return ps
-        }            
+            let ps = Array.concat [|b0a; b1a; b2a; b3a; b4a; b5a; b6a; b7a|]
+            ps
+      
 
     let applyTrans (t : ArbCameraTrans) (c0 : Camera) =
         match t with
@@ -710,8 +725,8 @@ module Lala =
     let genScenarioData (pointcount : int) (noise : bool) (cam0 : Camera) (scale : float) (apts : ArbPoints) =
         gen {
 
-            let! pts3d = genPoints apts pointcount
-            let bb = dataBounds cam0 scale
+            let pts3d = randomPoints apts pointcount
+            let bb = dataBounds cam0 scale           
 
             let! trans1 = genCameraTrans scale
             let! rot1 = genRotModifier 
@@ -761,7 +776,7 @@ module Lala =
                 InVolume bounds
 
             let! ct = intBetween 128 256
-            let! data = genScenarioData ct true cam0 scale apts
+            let! data = genScenarioData ct false cam0 scale apts
             let scenario = FundamentalScenario data
             return scenario
         }    
@@ -778,12 +793,11 @@ module Lala =
             let cv0 = CameraView.lookAt p0 t0 u0
             let! proj0 = arbProjection
             let cam0 = { view = cv0; proj = proj0 }
-            
-            let! q = arbQuadFacing45 cam0 scale             
-            let apts = InQuad q
+                        
+            let! apts = genQuadApts cam0 scale
 
             let! ct = intBetween 128 256
-            let! data = genScenarioData ct true cam0 scale apts
+            let! data = genScenarioData ct false cam0 scale apts
             let scenario = HomographyScenario data
             return scenario
         }    

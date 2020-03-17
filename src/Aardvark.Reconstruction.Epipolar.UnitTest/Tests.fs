@@ -92,35 +92,88 @@ module Impl =
         let mots = recover()
         getBestFittingMot scene.cam0 scene.cam1 mots |> Option.map (fun m -> { (scene.cam0 + m) with proj = scene.cam1.proj })
 
+    let recoverF (scenario : PrettyFundamentalScenario) =
+        let f = FundamentalMatrix.recover 1E+10 scenario.fdata.matches
+        match f with
+        | None -> 
+            None
+        | Some (fund,_,_) -> 
+            Some fund
+
 module Tests =
     open Impl
     let cfg : FsCheckConfig =
         { FsCheckConfig.defaultConfig with 
-            maxTest = 100000
+            maxTest = 20000
             arbitrary = [ typeof<EpipolarArbitraries> ] 
             
         }
-
+    let eps = 1E-2    
     let inline test name t = testPropertyWithConfig cfg name t
+
+    let fundamentalTransposed =
+        test "[Fundamental] Transposed is reverse F" (fun (scenario : PrettyFundamentalScenario) -> 
+            match recoverF scenario with
+            | None -> false
+            | Some f ->
+                let scene = scenario.fdata
+                let c0 = scene.cam0
+                let c1 = scene.cam1
+                let scale = (c0.Location - c1.Location).Length
+                let mots = 
+                    match FundamentalMatrix.decompose f.Transposed c1.proj c0.proj [] with
+                    | [] -> 
+                        []
+                    | fs -> 
+                        fs |> List.map (fun m -> m * scale)
+                match getBestFittingMot c1 c0 mots |> Option.map (fun m -> { (c1 + m) with proj = c0.proj }) with             
+                | None -> false
+                | Some cam ->
+                    Camera.approxEqual eps c0 cam
+        )   
 
     let camRecovered =
         test "[Epipolar] True camera recovered" (fun (scenario : Scenario) -> 
             match tryRecoverCamera scenario with
-            | None -> true
+            | None -> false  
             | Some cam -> 
                 let real = (getData scenario).cam1
-                Camera.approxEqual 1E-6 cam real
+                Camera.approxEqual eps cam real
         )
+
+    let reprojectionError =
+        test "[Epipolar] Rerprojection error is zero" (fun (scenario : Scenario) -> 
+            match tryRecoverCamera scenario with
+            | None -> false  
+            | Some cam -> 
+                let s = getData scenario
+                let ms = 
+                    Array.zip (s.pts3d) (s.matches |> Array.map snd)
+                let repr = Array.sumBy (fun (p,f) -> Vec.distance f (Camera.projectUnsafe p cam)) ms
+                if Fun.IsTiny(repr,eps) then true
+                else failwith ""
+        )    
     
     let algebraicError =
         test "[Epipolar] Algebraic error is zero" (fun (scenario : Scenario) -> 
             let alg = recoverAlgebraicError scenario
-            if Fun.IsTiny(alg,1E-6) then true 
-            else failwith ""
+            Fun.IsTiny(alg,eps)
         )    
 
-    let allTests =
-        testList "All Epipolar Tests" [
+    let epipolarTests =
+        testList "Epipolar Tests" [
             camRecovered
+            reprojectionError
             algebraicError
+        ]
+
+    let fundamentalTests =
+        testList "Fundamental Tests" [
+            fundamentalTransposed
+        ]    
+
+    let allTests =
+        testList "All Tests" [
+            epipolarTests
+            //fundamentalTests
         ]

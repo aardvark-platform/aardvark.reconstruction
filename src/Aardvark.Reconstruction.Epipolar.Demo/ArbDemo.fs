@@ -414,8 +414,8 @@ module ArbDemo =
             counter |> AVal.map ( fun _ -> 
                 Log.startTimed("Generate Scenario")
 
-                let scenario = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genVolumeScenario 
-                //let scene : Scenario = @"D:\temp\scene.bin" |> File.readAllBytes |> Pickler.pickler.UnPickle
+                //let scenario = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genPlaneScenario 
+                let scenario : Scenario = @"/Users/atti/temp/dump.bin" |> File.readAllBytes |> Pickler.pickler.UnPickle
 
                 Log.line "Scenario:\n"
                 //Log.line "C0:%A" scene.cam0
@@ -480,9 +480,11 @@ module ArbDemo =
                     | Some c -> 
                         let d = 
                             pMatches |> Array.averageBy (fun (o,p) -> 
-                                (c |> Camera.unproject o).GetMinimalDistanceTo(p)
+                                let ndc = Camera.projectUnsafe p c
+                                let d = Vec.distance o ndc
+                                d
                             )
-                        if d > 1E-0 then Log.error "bad cam: %s (%f)" n d
+                        if d > 1E-3 then Log.error "bad cam: %s (%f)" n d
                         Log.line "AvgNdcErr: %.9f" d
                         Log.line "sameness %s %f" n (Camera.sameness scene.cam1 c)
 
@@ -504,11 +506,12 @@ module ArbDemo =
         
         showScenario win scene co name
 
+    let rand = RandomSystem()
 
     let manyArbsAndRenderIfBad() =
         let mutable bad = None
         let tryRun() =
-            let scenario = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genNoiselessScenario 
+            let scenario = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genPlaneScenario 
             let scene = match scenario with FundamentalScenario scene -> scene | HomographyScenario scene -> scene
             let c0 = scene.cam0
             let c1 = scene.cam1
@@ -542,12 +545,12 @@ module ArbDemo =
                     | fs -> 
                         fs |> List.map (fun m -> m * scale)
 
-            let cp : Option<Camera> =
-                match P6P.recover pMatches with
-                | None -> 
-                    None
-                | Some cp -> 
-                    Some cp
+            let cp : Option<Camera> = None
+                // match P6P.recover pMatches with
+                // | None -> 
+                //     None
+                // | Some cp -> 
+                //     Some cp
 
             let cf = getBestFittingMot c0 c1 fmot |> Option.map (fun m -> { (c0 + m) with proj = c1.proj })
             let ch = getBestFittingMot c0 c1 hmot |> Option.map (fun m -> { (c0 + m) with proj = c1.proj })
@@ -558,10 +561,13 @@ module ArbDemo =
                 | None -> ()
                 | Some c -> 
                     let d = 
-                        pMatches |> Array.sumBy (fun (o,p) -> 
-                            (c |> Camera.unproject o).GetMinimalDistanceTo(p)
+                        pMatches |> Array.averageBy (fun (o,p) -> 
+                            let ndc = Camera.projectUnsafe p c
+                            let d = Vec.distance o ndc
+                            d
                         )
-                    if d > 1E-1 then testy <- testy+1
+
+                    if d > 1E-3 then testy <- testy+1
 
             fu ch "Homography"
             fu cf "Fundamental"
@@ -569,7 +575,7 @@ module ArbDemo =
 
             if testy >= 2 then 
                 Log.error "bad found:%A" scene
-                //Pickler.pickler.Pickle(scenario) |> File.writeAllBytes @"D:\temp\scene.bin"
+                Pickler.pickler.Pickle(scenario) |> File.writeAllBytes @"/Users/atti/temp/dump.bin"
                 bad <- Some (scene, cf, ch, cp)
 
         let mutable ct = 0

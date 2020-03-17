@@ -123,6 +123,37 @@ module Gen =
             return cfg,getData s           
         }
 
+    let genArbitraryTestScenario =
+        gen {
+            let! flat = Arb.generate<bool>
+            let! k = Arb.generate<TestKind>
+            let cfg =
+                {
+                    kind = k
+                    pointsAreFlat = flat
+                }
+            let! s = genTestScenario cfg
+            return cfg,getData s           
+        } 
+
+    type PrettyFundamentalScenario =
+        {
+            cfg : TestScenarioConfig
+            fdata : ScenarioData
+        } 
+
+    let genPrettyFundamentalTestScenario =
+        genFundamentalTestScenario |> Gen.map (fun (cfg,d) -> {cfg = cfg; fdata = d})
+
+    type PrettyHomographyScenario =
+        {
+            cfg : TestScenarioConfig
+            hdata : ScenarioData
+        } 
+
+    let genPrettyHomographyTestScenario =
+        genHomographyTestScenario |> Gen.map (fun (cfg,d) -> {cfg = cfg; hdata = d})
+
     let toScenario ( (c,d) :TestScenarioConfig * ScenarioData) =
         match c.kind with
         | FundamentalTest -> FundamentalScenario d
@@ -131,5 +162,11 @@ module Gen =
     type EpipolarArbitraries() =
 
         static member GenerateArbitraryScenario() =
-            genFundamentalTestScenario |> Gen.map toScenario |> Arb.fromGen
+            genArbitraryTestScenario |> Gen.map toScenario |> Arb.fromGen
+
+        static member GenerateFundamentalScenario() =
+            genPrettyFundamentalTestScenario |> Arb.fromGen
+
+        static member GenerateHomographyScenario() =
+            genPrettyHomographyTestScenario |> Arb.fromGen
 

@@ -266,5 +266,5 @@ module FundamentalMatrix =
                 R1, t2
                 R2, t2
             ] 
-        | None -> []
+        | None -> decompose2 F lIntern rIntern referencePoints
  
