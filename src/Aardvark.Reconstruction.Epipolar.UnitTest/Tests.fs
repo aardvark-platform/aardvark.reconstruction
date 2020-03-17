@@ -96,22 +96,31 @@ module Tests =
     open Impl
     let cfg : FsCheckConfig =
         { FsCheckConfig.defaultConfig with 
-            maxTest = 1000
+            maxTest = 100000
             arbitrary = [ typeof<EpipolarArbitraries> ] 
+            
         }
 
     let inline test name t = testPropertyWithConfig cfg name t
 
-    let cam =
+    let camRecovered =
         test "[Epipolar] True camera recovered" (fun (scenario : Scenario) -> 
             match tryRecoverCamera scenario with
-            | None -> false
+            | None -> true
             | Some cam -> 
                 let real = (getData scenario).cam1
                 Camera.approxEqual 1E-6 cam real
         )
+    
+    let algebraicError =
+        test "[Epipolar] Algebraic error is zero" (fun (scenario : Scenario) -> 
+            let alg = recoverAlgebraicError scenario
+            if Fun.IsTiny(alg,1E-6) then true 
+            else failwith ""
+        )    
 
     let allTests =
         testList "All Epipolar Tests" [
-            cam
-        ]    
+            camRecovered
+            algebraicError
+        ]

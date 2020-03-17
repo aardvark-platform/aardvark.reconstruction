@@ -74,8 +74,8 @@ module Gen =
             let! pointCount = intBetween 128 512
 
             let! p0 = arbV3d Box3d.Unit
-            let! t0 = arbV3d Box3d.Unit
-            let fw0 = (t0 - p0).Normalized
+            let! fw0 = arbDir
+            let t0 = p0 + fw0
             let nf = Trafo3d.FromNormalFrame(p0,fw0)
             let u0 = nf.Backward.C0.XYZ.Normalized
             let cv0 = CameraView.lookAt p0 t0 u0
