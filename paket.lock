@@ -199,7 +199,7 @@ NUGET
     Expecto.FsCheck (8.13.1)
       Expecto (>= 8.13.1)
       FsCheck (>= 2.14)
-    FsCheck (2.14.1)
+    FsCheck (2.14)
       FSharp.Core (>= 4.2.3)
     FShade (5.0)
       FShade.Core (5.0)

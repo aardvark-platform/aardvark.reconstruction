@@ -21,7 +21,7 @@ nuget MiniCV ~> 1.1.0
 nuget FSharp.Data
 nuget MetadataExtractor
 
-nuget FsCheck ~> 2.14.0
+nuget FsCheck = 2.14.0
 nuget Expecto ~> 8.13.1
 nuget Expecto.FsCheck ~> 8.13.1
 

@@ -295,6 +295,9 @@ module Lala =
             return V3d(x,y,z)
         }        
 
+    let randomV3dArray (n : int) (b : Box3d) =
+        Array.init n (fun _ -> rand.UniformV3d(b))
+
     let arbPos =
         gen {
             let! x = reasonableFloat
@@ -615,13 +618,13 @@ module Lala =
                 let maxy = max (max (max qp0.Y qp1.Y) qp2.Y) qp3.Y
 
                 let qct = float ct/float 4 |> ceil |> int
-                let! bla = Gen.arrayOfLength qct (arbV3d (Box3d(V3d(minx,miny,0.0), V3d(0.0,0.0,0.0))))
+                let bla = randomV3dArray qct (Box3d(V3d(minx,miny,0.0), V3d(0.0,0.0,0.0)))
                 let  bl  = bla |> Array.map t.TransformPos
-                let! bra = Gen.arrayOfLength qct (arbV3d (Box3d(V3d(0.0,miny,0.0), V3d(maxx,0.0,0.0))))
+                let bra = randomV3dArray qct (Box3d(V3d(0.0,miny,0.0), V3d(maxx,0.0,0.0)))
                 let  br  = bra |> Array.map t.TransformPos
-                let! tla = Gen.arrayOfLength qct (arbV3d (Box3d(V3d(minx,0.0,0.0), V3d(0.0,maxy,0.0))))
+                let tla = randomV3dArray qct (Box3d(V3d(minx,0.0,0.0), V3d(0.0,maxy,0.0)))
                 let  tl  = tla |> Array.map t.TransformPos
-                let! tra = Gen.arrayOfLength qct (arbV3d (Box3d(V3d(0.0,0.0,0.0), V3d(maxx,maxy,0.0))))
+                let tra = randomV3dArray qct (Box3d(V3d(0.0,0.0,0.0), V3d(maxx,maxy,0.0)))
                 let  tr  = tra |> Array.map t.TransformPos
                 
                 return Array.concat [|bl;br;tr;tl|]
@@ -647,14 +650,14 @@ module Lala =
                 let b6 = bb Ox Ny Oz Ix Oy Iz
                 let b7 = bb Ox Ny Nz Ix Oy Oz
 
-                let! b0a = Gen.arrayOfLength bct (arbV3d b0)
-                let! b1a = Gen.arrayOfLength bct (arbV3d b1)
-                let! b2a = Gen.arrayOfLength bct (arbV3d b2)
-                let! b3a = Gen.arrayOfLength bct (arbV3d b3)
-                let! b4a = Gen.arrayOfLength bct (arbV3d b4)
-                let! b5a = Gen.arrayOfLength bct (arbV3d b5)
-                let! b6a = Gen.arrayOfLength bct (arbV3d b6)
-                let! b7a = Gen.arrayOfLength bct (arbV3d b7)
+                let b0a = randomV3dArray bct b0
+                let b1a = randomV3dArray bct b1
+                let b2a = randomV3dArray bct b2
+                let b3a = randomV3dArray bct b3
+                let b4a = randomV3dArray bct b4
+                let b5a = randomV3dArray bct b5
+                let b6a = randomV3dArray bct b6
+                let b7a = randomV3dArray bct b7
 
                 let ps = Array.concat [|b0a; b1a; b2a; b3a; b4a; b5a; b6a; b7a|]
                 return ps
