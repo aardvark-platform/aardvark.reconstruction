@@ -90,7 +90,8 @@ module Impl =
                     recover,scene
 
         let mots = recover()
-        getBestFittingMot scene.cam0 scene.cam1 mots |> Option.map (fun m -> { (scene.cam0 + m) with proj = scene.cam1.proj })
+        getBestFittingMot scene.cam0 scene.cam1 scene.pts3d scene.matches mots 
+            |> Option.map (fun m -> { (scene.cam0 + m) with proj = scene.cam1.proj })
 
     let recoverF (scenario : PrettyFundamentalScenario) =
         let f = FundamentalMatrix.recover 1E+10 scenario.fdata.matches
@@ -108,7 +109,7 @@ module Tests =
             arbitrary = [ typeof<EpipolarArbitraries> ] 
             
         }
-    let eps = 1E-2    
+    let eps = 1E-3    
     let inline test name t = testPropertyWithConfig cfg name t
 
     let fundamentalTransposed =
@@ -126,7 +127,10 @@ module Tests =
                         []
                     | fs -> 
                         fs |> List.map (fun m -> m * scale)
-                match getBestFittingMot c1 c0 mots |> Option.map (fun m -> { (c1 + m) with proj = c0.proj }) with             
+                let mot = 
+                    getBestFittingMot c1 c0 scene.pts3d scene.matches mots 
+                    |> Option.map (fun m -> { (c1 + m) with proj = c0.proj })                
+                match mot with             
                 | None -> false
                 | Some cam ->
                     Camera.approxEqual eps c0 cam

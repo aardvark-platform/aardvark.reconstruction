@@ -192,7 +192,6 @@ module FundamentalMatrix =
             ]
 
         | None -> 
-            Log.error "should not happen"
             []
         
 

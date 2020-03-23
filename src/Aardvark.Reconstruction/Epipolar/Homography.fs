@@ -130,6 +130,7 @@ module Homography =
 
             let H = hNorm / gamma
             
+            
             // negative determinant of minor
             let inline minorOpp (M : M33d) x y =
                 let inline m i j = M.[i-1, j-1]
@@ -144,7 +145,7 @@ module Homography =
                 if abs v < eps then 0.0 else v  //prevent possible sign flip around 0.0
             
             let S = H.Transposed * H - M33d.Identity
-
+            
             if abs S.NormMax < eps then
                 
                 let motion =

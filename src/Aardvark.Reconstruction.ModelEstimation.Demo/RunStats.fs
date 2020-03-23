@@ -86,7 +86,7 @@ module Stats =
                 |> Array.map (fun (p3d,(l,r)) -> r,p3d)
 
             let alg,mots = recover()
-            let co = getBestFittingMot scene.cam0 scene.cam1 mots |> Option.map (fun m -> { (scene.cam0 + m) with proj = scene.cam1.proj })
+            let co = getBestFittingMot scene.cam0 scene.cam1 scene.pts3d scene.matches mots |> Option.map (fun m -> { (scene.cam0 + m) with proj = scene.cam1.proj })
 
             let fu c n = 
                 match c with

@@ -508,17 +508,28 @@ module Lala =
             | 0 -> return ArbCameraTrans.No
             | 1 -> 
                 let sh = scale/2.0
-                let! d = floatBetween -sh sh
+                let mi = scale*0.1
+                let! pos = Arb.generate<bool>
+                let! len = floatBetween mi sh
+                let d = if pos then len else -len
                 return AlongFw d
             | 2 -> 
-                let sh = scale        
-                let! dx = floatBetween -sh sh 
-                let! dy = floatBetween -sh sh 
+                let sh = scale    
+                let mi = scale*0.1    
+                let! posx = Arb.generate<bool>
+                let! lenx = floatBetween mi sh
+                let dx = if posx then lenx else -lenx
+                let! posy = Arb.generate<bool>
+                let! leny = floatBetween mi sh
+                let dy = if posy then leny else -leny
                 return InPlane (V2d(dx,dy))
             | 3 -> 
                 let sh = scale
+                let mi = scale*0.1
                 let! dir = arbDir
-                let! len = floatBetween -sh sh
+                let! pos = Arb.generate<bool>
+                let! v = floatBetween mi sh
+                let len = if pos then v else -v
                 return ArbitraryDir (dir*len)
             | _ -> 
                 return failwith "no"
@@ -538,6 +549,23 @@ module Lala =
             | _ -> 
                 return failwith "unreachable"
         }            
+
+    let genVolumeApts (cam : Camera) (scale : float) =
+        gen {
+            let bounds = dataBounds cam scale
+            let! i = Gen.choose(0,2) 
+            match i with
+            | 0 -> 
+                let! t = floatBetween 0.005 0.2
+                return AlmostLinearVolume(bounds,t)
+            | 1 -> 
+                let! t = floatBetween 0.0001 0.2
+                return AlmostFlatVolume(bounds,t)
+            | 2 -> 
+                return InVolume bounds    
+            | _ -> 
+                return failwith "unreachable"
+        }    
 
     let genArbPoints (cam : Camera) (scale : float) =
         gen {
@@ -761,7 +789,7 @@ module Lala =
 
     let genVolumeScenario =
         gen {
-            let! scale = floatBetween 4.0 4.0   
+            let! scale = floatBetween 4.0 8.0   
 
             let p0 = V3d.OOO
             let t0 = V3d.IOO
@@ -771,9 +799,7 @@ module Lala =
             let cv0 = CameraView.lookAt p0 t0 u0
             let! proj0 = arbProjection
             let cam0 = { view = cv0; proj = proj0 }
-            let apts = 
-                let bounds = dataBounds cam0 scale
-                InVolume bounds
+            let! apts = genVolumeApts cam0 scale
 
             let! ct = intBetween 128 256
             let! data = genScenarioData ct false cam0 scale apts
@@ -783,7 +809,7 @@ module Lala =
 
     let genPlaneScenario =
         gen {
-            let! scale = floatBetween 4.0 4.0   
+            let! scale = floatBetween 4.0 8.0   
 
             let p0 = V3d.OOO
             let t0 = V3d.IOO

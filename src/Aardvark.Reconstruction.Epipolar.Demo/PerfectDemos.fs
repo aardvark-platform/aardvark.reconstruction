@@ -25,6 +25,12 @@ module Testy2 =
                 List.fold2 (fun r (_,_,os0) (_,_,os1) -> (List.zip os0 os1)@r ) [] Fpoints2dc0 Fpoints2dc1
             let hMatches =
                 List.fold2 (fun r (_,_,os0) (_,_,os1) -> (List.zip os0 os1)@r ) [] Hpoints2dc0 Hpoints2dc1
+            
+            let fp3d = 
+                List.collect (fun (_,_,p) -> p ) Fpoints3d
+            let hp3d = 
+                List.collect (fun (_,_,p) -> p ) Hpoints3d
+
             let p3d = (Hpoints3d@Fpoints3d)
             let pMatches = 
                 List.zip (Hpoints2dc1@Fpoints2dc1) p3d
@@ -64,8 +70,8 @@ module Testy2 =
                 | Some cp -> 
                     cp
 
-            let ch = { (c0 + ((getBestFittingMot c0 c1 hmot)|> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
-            let cf = { (c0 + ((getBestFittingMot c0 c1 fmot)|> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
+            let ch = { (c0 + ((getBestFittingMot c0 c1 (List.toArray hp3d) (List.toArray hMatches) hmot)|> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
+            let cf = { (c0 + ((getBestFittingMot c0 c1 (List.toArray fp3d) (List.toArray fMatches) fmot)|> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
 
             if 
              not ( Camera.approxEqual 1E-4 c1 cp ) ||
@@ -259,6 +265,11 @@ module Testy2 =
                 |> List.collect ( fun ((_,_,fs),(_,_,ps)) -> List.zip fs ps)
                 |> List.toArray
 
+            let fp3d = 
+                List.collect (fun (_,_,p) -> p ) Fpoints3d
+            let hp3d = 
+                List.collect (fun (_,_,p) -> p ) Hpoints3d
+
             let hom = Homography.recover (hMatches |> List.toArray)
             let hmot =
                 match hom with
@@ -295,8 +306,8 @@ module Testy2 =
                 | Some cp -> 
                     cp
 
-            let ch = { (c0 + ((getBestFittingMot c0 c1 hmot) |> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
-            let cf = { (c0 + ((getBestFittingMot c0 c1 fmot) |> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
+            let ch = { (c0 + ((getBestFittingMot c0 c1 (List.toArray hp3d) (List.toArray hMatches) hmot)|> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
+            let cf = { (c0 + ((getBestFittingMot c0 c1 (List.toArray fp3d) (List.toArray fMatches) fmot)|> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
 
             let pg = ( Camera.approxEqual 1E-4 c1 cp )
             let hg = ( Camera.approxEqual 1E-4 c1 ch )
@@ -356,6 +367,10 @@ module Testy2 =
                     |> List.collect ( fun ((_,_,fs),(_,_,ps)) -> List.zip fs ps)
                     |> List.toArray
 
+                let fp3d = 
+                    List.collect (fun (_,_,p) -> p ) Fpoints3d
+                let hp3d = 
+                    List.collect (fun (_,_,p) -> p ) Hpoints3d
 
                 let hom = Homography.recover (hMatches |> List.toArray)
                 let hmot =
@@ -398,8 +413,8 @@ module Testy2 =
                         Log.line "Recovered P6P camera"
                         cp
 
-                let cf = { (c0 + ((getBestFittingMot c0 c1 fmot) |> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
-                let ch = { (c0 + ((getBestFittingMot c0 c1 hmot) |> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
+                let ch = { (c0 + ((getBestFittingMot c0 c1 (List.toArray hp3d) (List.toArray hMatches) hmot)|> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
+                let cf = { (c0 + ((getBestFittingMot c0 c1 (List.toArray fp3d) (List.toArray fMatches) fmot)|> Option.defaultValue CameraMotion.Zero)) with proj = c1.proj }
 
                 let fu c = 
                     pMatches |> Array.sumBy (fun (o,p) -> 
