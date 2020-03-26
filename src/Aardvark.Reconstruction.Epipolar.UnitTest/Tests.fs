@@ -133,7 +133,9 @@ module Tests =
                 match mot with             
                 | None -> false
                 | Some cam ->
-                    Camera.approxEqual eps c0 cam
+                    let s = Camera.sameness c0 cam
+                    if Camera.approxEqual eps c0 cam then true
+                    else failwithf "%f" s
         )   
 
     let camRecovered =
@@ -142,7 +144,7 @@ module Tests =
             | None -> false  
             | Some cam -> 
                 let real = (getData scenario).cam1
-                Camera.approxEqual eps cam real
+                Camera.approxEqual (eps*10.0) cam real
         )
 
     let reprojectionError =
@@ -153,9 +155,9 @@ module Tests =
                 let s = getData scenario
                 let ms = 
                     Array.zip (s.pts3d) (s.matches |> Array.map snd)
-                let repr = Array.sumBy (fun (p,f) -> Vec.distance f (Camera.projectUnsafe p cam)) ms
+                let repr = Array.averageBy (fun (p,f) -> Vec.distance f (Camera.projectUnsafe p cam)) ms
                 if Fun.IsTiny(repr,eps) then true
-                else failwith ""
+                else failwithf "%f > %f" repr eps
         )    
     
     let algebraicError =
@@ -178,6 +180,6 @@ module Tests =
 
     let allTests =
         testList "All Tests" [
-            epipolarTests
-            //fundamentalTests
+            //epipolarTests
+            fundamentalTests
         ]
