@@ -101,11 +101,35 @@ module Impl =
         | Some (fund,_,_) -> 
             Some fund
 
+    let recoverNormal (scenario : PrettyHomographyScenario) =
+        let recover, scene =
+            let scene = scenario.hdata
+            let recover() =
+                let c0 = scene.cam0
+                let c1 = scene.cam1
+                let scale = (c1.Location - c0.Location).Length
+                let hom = Homography.recover scene.matches
+                match hom with
+                | None -> 
+                    []
+                | Some h -> 
+                    match Homography.decomposeWithNormal h c0.proj c1.proj [] with
+                    | [] -> 
+                        []
+                    | (hs) -> 
+                        hs |> List.map (fun (m,n) -> (m * scale,n))
+            recover,scene
+
+        let mots = recover()
+        getBestFittingMoti scene.cam0 scene.cam1 scene.pts3d scene.matches (mots |> List.map fst) 
+            |> Option.map (fun (m,i) -> mots |> List.item i |> snd)
+
+
 module Tests =
     open Impl
     let cfg : FsCheckConfig =
         { FsCheckConfig.defaultConfig with 
-            maxTest = 20000
+            maxTest = 2000
             arbitrary = [ typeof<EpipolarArbitraries> ] 
             
         }
@@ -128,7 +152,7 @@ module Tests =
                     | fs -> 
                         fs |> List.map (fun m -> m * scale)
                 let mot = 
-                    getBestFittingMot c1 c0 scene.pts3d scene.matches mots 
+                    getBestFittingMot c1 c0 scene.pts3d (scene.matches |> Array.map (fun (a,b) -> (b,a))) mots 
                     |> Option.map (fun m -> { (c1 + m) with proj = c0.proj })                
                 match mot with             
                 | None -> false
@@ -138,8 +162,30 @@ module Tests =
                     else failwithf "%f" s
         )   
 
+    let homographyNormal =
+        test "[Homography] Correct quad normal recovered" (fun (scenario : PrettyHomographyScenario) -> 
+            match recoverNormal scenario with
+            | None -> false
+            | Some n -> 
+                match scenario.hdata.camtrans with
+                | No -> n.AnyNaN
+                | _ -> 
+                    let real = 
+                        match scenario.hdata.points with
+                        | InQuad q -> q.Normal
+                        | AlmostLinearQuad (q,_) -> q.Normal
+                        | _ -> failwith "unreachable"
+
+                    let r = real.Normalized
+                    let n = n.Normalized
+
+                    let good = Fun.ApproximateEquals(r,n,eps) || Fun.ApproximateEquals(r,-n,eps)
+
+                    good
+        )
+
     let camRecovered =
-        test "[Epipolar] True camera recovered" (fun (scenario : Scenario) -> 
+        test "[Epipolar] Correct camera recovered" (fun (scenario : Scenario) -> 
             match tryRecoverCamera scenario with
             | None -> false  
             | Some cam -> 
@@ -161,7 +207,7 @@ module Tests =
         )    
     
     let algebraicError =
-        test "[Epipolar] Algebraic error is zero" (fun (scenario : Scenario) -> 
+        test "[Epipolar] Epipolar property holds" (fun (scenario : Scenario) -> 
             let alg = recoverAlgebraicError scenario
             Fun.IsTiny(alg,eps)
         )    
@@ -178,8 +224,14 @@ module Tests =
             fundamentalTransposed
         ]    
 
+    let homographyTests =
+        testList "Homography Tests" [
+            homographyNormal
+        ]    
+
     let allTests =
         testList "All Tests" [
-            //epipolarTests
+            epipolarTests
             fundamentalTests
+            //homographyTests
         ]

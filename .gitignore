@@ -15,3 +15,5 @@ bin/Debug
 symbolCache.db
 **/.DS_Store
 **/Aardvark.log
+.fake
+.ionide

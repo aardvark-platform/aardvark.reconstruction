@@ -21,18 +21,23 @@ module Testy =
             let ms = Array.zip pts3d (matches |> Array.map (if estimatedc0 then fst else snd))
             let real = if estimatedc0 then cam1 else cam0
             let scores =
-                mots |> List.map (fun mot -> 
+                mots |> List.mapi (fun i mot -> 
                     let estimated = real + mot
                     let score = ms |> Array.averageBy (fun (p,actual) -> 
                         let observed = Camera.projectUnsafe p estimated
                         Vec.distance observed actual
                     )
-                    score, mot
+                    score, (mot,i)
                 )
             let d = Vec.distance cam0.Location cam1.Location            
             scores |> List.minBy fst |> snd |> Some
 
-    let getBestFittingMot = getBestFittingMotC false
+    let getBestFittingMot (cam0 : Camera) (cam1 : Camera) (pts3d : V3d[]) (matches : (V2d * V2d)[]) (mots : list<CameraMotion>)  = 
+        getBestFittingMotC false cam0 cam1 pts3d matches mots |> Option.map (fun (m,i) -> m)
+
+    let getBestFittingMoti (cam0 : Camera) (cam1 : Camera) (pts3d : V3d[]) (matches : (V2d * V2d)[]) (mots : list<CameraMotion>)  = 
+        getBestFittingMotC false cam0 cam1 pts3d matches mots
+
     let getBestFittingMotInv = getBestFittingMotC true
 
     let fundamentalChecker() =

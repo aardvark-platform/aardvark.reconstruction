@@ -105,7 +105,7 @@ module Homography =
             )   |> sqrt
 
     // Malis, Ezio, and Manuel Vargas. Deeper understanding of the homography decomposition for vision-based control. Diss. INRIA, 2007.
-    let decompose (H : M33d) (lIntern : Projection) (rIntern : Projection) (references : list<V2d * V2d>) =
+    let private decomposeFull (H : M33d) (lIntern : Projection) (rIntern : Projection) (references : list<V2d * V2d>) =
         let K1 = Projection.toTrafo rIntern
         let K0 = Projection.toTrafo lIntern
         let hNorm = K1.Backward * H * K0.Forward
@@ -115,7 +115,7 @@ module Homography =
         //Log.warn "%A" hNorm.Det
 
         if hNorm.IsIdentity eps then
-            [ CameraMotion.zero ]
+            [( CameraMotion.zero ,V3d.NaN)]
             
         else
 
@@ -153,7 +153,7 @@ module Homography =
                     let trn = V3d.Zero
                     Euclidean3d(rot,trn)
 
-                [ { trafo = motion; isNormalized = false } ]
+                [ ({ trafo = motion; isNormalized = false },V3d.NaN) ]
             else
 
                 let inline s i j = S.[i-1,j-1]
@@ -275,7 +275,7 @@ module Homography =
                                 res
                             )
                         if isValid then
-                            Some { trafo = trafo; isNormalized = true }
+                            Some ({ trafo = trafo; isNormalized = true }, R.Transposed * n)
                         else
                             None
                     with _ ->
@@ -287,6 +287,7 @@ module Homography =
                         (Rb,tb,nb)
                         (Rb,-tb,-nb)
                     ]
+
                 match result with
                     | [] -> 
                         //Log.error "all is wrong"
@@ -294,6 +295,11 @@ module Homography =
                         []
                     | r -> r
     
+    let decompose (H : M33d) (lIntern : Projection) (rIntern : Projection) (references : list<V2d * V2d>) = 
+        decomposeFull H lIntern rIntern references |> List.map fst
+
+    let decomposeWithNormal = decomposeFull
+
     module SacHelpers =
         
         let checkPolygons (poly1 : V2d[]) (poly2 : V2d[]) =
