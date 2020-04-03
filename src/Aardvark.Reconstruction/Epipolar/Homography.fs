@@ -275,19 +275,19 @@ module Homography =
                                 res
                             )
                         if isValid then
-                            Some ({ trafo = trafo; isNormalized = true }, R.Transposed * n)
+                            Some ({ trafo = trafo; isNormalized = true }, trafo.TransformDir(n))
                         else
                             None
                     with _ ->
                         None
-                let result = 
-                    List.choose motionOf [
+                let result2 = 
+                    List.map motionOf [
                         (Ra,ta,na)
                         (Ra,-ta,-na)
                         (Rb,tb,nb)
                         (Rb,-tb,-nb)
                     ]
-
+                let result = List.choose id result2
                 match result with
                     | [] -> 
                         //Log.error "all is wrong"

@@ -5,13 +5,15 @@ VisualStudioVersion = 16.0.29709.97
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Reconstruction", "Aardvark.Reconstruction\Aardvark.Reconstruction.fsproj", "{C07BD848-6DC0-4A04-9B90-413F7A73174A}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Reconstruction.Epipolar.Demo", "Aardvark.Reconstruction.Epipolar.Demo\Aardvark.Reconstruction.Epipolar.Demo.fsproj", "{5ED657C9-9D7F-4C71-AFE2-816DA1CAE1B5}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Epipolar.Demo", "Epipolar.Demo\Epipolar.Demo.fsproj", "{5ED657C9-9D7F-4C71-AFE2-816DA1CAE1B5}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Test", "Test\Test.fsproj", "{327602B0-750D-4AD9-B5AB-1B3B29C05AA9}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Reconstruction.ModelEstimation.Demo", "Aardvark.Reconstruction.ModelEstimation.Demo\Aardvark.Reconstruction.ModelEstimation.Demo.fsproj", "{1D8747F8-0350-413E-A5F7-DD41F883B735}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ModelEstimation.Demo", "ModelEstimation.Demo\ModelEstimation.Demo.fsproj", "{1D8747F8-0350-413E-A5F7-DD41F883B735}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Reconstruction.Epipolar.UnitTest", "Aardvark.Reconstruction.Epipolar.UnitTest\Aardvark.Reconstruction.Epipolar.UnitTest.fsproj", "{B03450CE-18DD-4C32-A1B9-101A34F87327}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Epipolar.UnitTest", "Epipolar.UnitTest\Epipolar.UnitTest.fsproj", "{B03450CE-18DD-4C32-A1B9-101A34F87327}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ModelEstimation.UnitTest", "ModelEstimation.UnitTest\ModelEstimation.UnitTest.fsproj", "{6450D626-09C7-4E86-BA8E-706AEBBE1F7C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +41,10 @@ Global
 		{B03450CE-18DD-4C32-A1B9-101A34F87327}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B03450CE-18DD-4C32-A1B9-101A34F87327}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B03450CE-18DD-4C32-A1B9-101A34F87327}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6450D626-09C7-4E86-BA8E-706AEBBE1F7C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6450D626-09C7-4E86-BA8E-706AEBBE1F7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6450D626-09C7-4E86-BA8E-706AEBBE1F7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6450D626-09C7-4E86-BA8E-706AEBBE1F7C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
