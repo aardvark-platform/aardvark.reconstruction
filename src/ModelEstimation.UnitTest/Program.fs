@@ -9,10 +9,7 @@ open FsCheck
 module Test = 
     [<EntryPoint>]
     let main argv =
-        //sArbDemo.singleArbTest()
-        //Stats.runny()
-        //Stats.statty()
-        //Stats.runnyAndStatty()
+        
 
         printfn "Hello World from F#!"
         0 // return an integer exit code

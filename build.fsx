@@ -11,5 +11,4 @@ do Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
 DefaultSetup.install ["src/Aardvark.Reconstruction.sln"]
 
-
 entry()
