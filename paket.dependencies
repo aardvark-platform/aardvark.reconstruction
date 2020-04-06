@@ -1,4 +1,4 @@
-framework: netcoreapp3.1
+framework: netstandard2.0, netcoreapp3.1
 source https://api.nuget.org/v3/index.json
 
 nuget FSharp.Core                           ~> 4.6.2
@@ -27,6 +27,7 @@ nuget Expecto.FsCheck ~> 8.13.1
 
 nuget Aardvark.Geometry.PointTree ~> 5.0.4
 group Build
+framework: netstandard2.0
 source https://api.nuget.org/v3/index.json
 github aardvark-platform/aardvark.fake:v5
 nuget Fake.DotNet.Cli

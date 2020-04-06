@@ -1,6 +1,10 @@
 [![Join the chat at https://gitter.im/aardvark-platform/Lobby](https://img.shields.io/badge/gitter-join%20chat-blue.svg)](https://gitter.im/aardvark-platform/Lobby)
 [![license](https://img.shields.io/github/license/aardvark-platform/template.svg)](https://github.com/aardvark-platform/template/blob/master/LICENSE)
 
+![Windows](https://github.com/aardvark-platform/aardvark.reconstruction/workflows/Windows/badge.svg)
+![MacOS](https://github.com/aardvark-platform/aardvark.reconstruction/workflows/MacOS/badge.svg)
+![Linux](https://github.com/aardvark-platform/aardvark.reconstruction/workflows/Linux/badge.svg)
+
 [The Aardvark Platform](https://aardvarkians.com/) |
 [Platform Wiki](https://github.com/aardvarkplatform/aardvark.docs/wiki) | 
 [Gallery](https://github.com/aardvarkplatform/aardvark.docs/wiki/Gallery) | 
