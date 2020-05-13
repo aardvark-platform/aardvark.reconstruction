@@ -166,9 +166,9 @@ module Tests =
         test "[Homography] Correct quad normal recovered" (fun (scenario : PrettyHomographyScenario) -> 
             match recoverNormal scenario with
             | None -> false
-            | Some n -> 
+            | Some norm -> 
                 match scenario.hdata.camtrans with
-                | No -> n.AnyNaN
+                | No -> norm.AnyNaN
                 | _ -> 
                     let real = 
                         match scenario.hdata.points with
@@ -177,7 +177,9 @@ module Tests =
                         | _ -> failwith "unreachable"
 
                     let r = real.Normalized
-                    let n = n.Normalized
+                    let vt = Camera.viewTrafo scenario.hdata.cam1
+
+                    let n = (vt.Backward.TransformDir norm).Normalized
 
                     let good = Fun.ApproximateEquals(r,n,eps) || Fun.ApproximateEquals(r,-n,eps)
 
@@ -233,5 +235,5 @@ module Tests =
         testList "All Tests" [
             epipolarTests
             fundamentalTests
-            //homographyTests
+            homographyTests
         ]
