@@ -40,7 +40,7 @@ module Bla =
 let main args =
     let f = new LensFun()
 
-    for c in f.GetCameras() do
+    for c in f.GetCameras() |> Seq.truncate 5 do
         Log.start "%A" c
         for l in f.FindLenses(c) do
             Log.line "%A" l
