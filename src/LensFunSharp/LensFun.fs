@@ -273,7 +273,7 @@ type private Loader() =
     inherit LibraryLoader()
 
     override x.CoreLoadNativeLibrary(name : string) : nativeint =
-        Aardvark.LoadLibrary(null, name)
+        Aardvark.LoadLibrary(typeof<Loader>.Assembly, name)
 
     override x.CoreFreeNativeLibrary(name : nativeint) : unit =
         ()
