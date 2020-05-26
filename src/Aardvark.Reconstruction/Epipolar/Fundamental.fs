@@ -144,7 +144,7 @@ module FundamentalMatrix =
         let ess = Kr.Forward.Transposed * F * Kl.Forward
         match SVD.Decompose ess with
         | Some(U,S,Vt) -> 
-            let En = U * M33d.Diagonal(1.0,1.0,0.0) * Vt
+            let En = U * M33d.FromDiagonal(1.0,1.0,0.0) * Vt
             let eTe = En.Transposed * En
             
             let inline e i j =    En.[i-1,j-1]
