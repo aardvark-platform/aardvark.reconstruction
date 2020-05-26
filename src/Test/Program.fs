@@ -38,7 +38,7 @@ module Bla =
 
 [<EntryPoint>]
 let main args =
-    let f = new LensFunSharp.LensFun @"C:\Users\Schorsch\AppData\Local\aardworx\lensfun"
+    let f = new LensFun()
 
     for c in f.GetCameras() do
         Log.start "%A" c

@@ -8,6 +8,8 @@ open System.Runtime.CompilerServices
 open Microsoft.FSharp.NativeInterop
 open Aardvark.Base
 open System.IO
+open System.IO.Compression
+open System.Net
 
 #nowarn "9"
 
@@ -280,6 +282,37 @@ type private Loader() =
         Aardvark.GetProcAddress(library, name)
 
 
+type LensFunDatabase private() =
+    static let path = 
+        Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.LocalApplicationData, "LensFunSharp", "database")
+
+    
+    static let download() =
+        
+        use wc = new WebClient()
+        let data = wc.DownloadData "https://github.com/lensfun/lensfun/archive/master.zip"
+        use ms = new MemoryStream(data)
+        use arch = new ZipArchive(ms)
+        if not (Directory.Exists path) then Directory.CreateDirectory path |> ignore
+
+        for e in arch.Entries do
+            let ext = Path.GetExtension(e.Name).ToLower()
+            if ext = ".xml" && e.FullName.StartsWith "lensfun-master/data/db/" then
+                let dst = Path.Combine(path, e.Name)
+                e.ExtractToFile dst
+
+    static let files =
+        lazy (
+            if not (Directory.Exists path) then download()
+            Directory.GetFiles(path, "*.xml")
+
+        )
+
+    static member Files = files.Value
+
+
+
+
 type LensFun(databaseFiles : string[]) =
     let lf = LibraryActivator.CreateInstance<Implementation.LensFun>("lensfun", Loader())
     let mutable db = lf.NewDatabase()
@@ -388,7 +421,8 @@ type LensFun(databaseFiles : string[]) =
     interface IDisposable with
         member x.Dispose() = x.Dispose()
 
-    new() = new LensFun([||])
+    new() = new LensFun(LensFunDatabase.Files)
+
     new(directory : string) =
         let files =
             if Directory.Exists directory then Directory.GetFiles(directory, "*.xml", SearchOption.AllDirectories)
