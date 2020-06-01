@@ -40,6 +40,25 @@ module Bla =
 let main args =
     let f = new LensFun()
 
+
+    f.AddXml("""
+<!DOCTYPE lensdatabase SYSTEM "lensfun-database.dtd">
+<lensdatabase version="2">
+    <camera>
+        <maker>Franz</maker>
+        <model>Super</model>
+        <mount>Heinzi</mount>
+        <cropfactor>2</cropfactor>
+    </camera>
+</lensdatabase>
+    
+    """) |> ignore
+
+
+
+    let cam = f.FindCameras("Franz", "Super") |> Seq.toList
+    Log.warn "%A" cam
+
     for c in f.GetCameras() |> Seq.truncate 5 do
         Log.start "%A" c
         for l in f.FindLenses(c) do

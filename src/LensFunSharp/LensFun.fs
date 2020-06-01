@@ -154,6 +154,9 @@ module Implementation =
     
         [<NativeApi(EntryPoint = "lf_db_load_file")>]
         abstract member LoadDatabaseFile : db : LensFunDatabaseHandle * path : string -> LensFunError
+        
+        [<NativeApi(EntryPoint = "lf_db_load_data")>]
+        abstract member LoadData : db : LensFunDatabaseHandle * [<MarshalAs(UnmanagedType.LPStr)>] errorContext : string * [<MarshalAs(UnmanagedType.LPStr)>] data : string * dataSize : unativeint -> LensFunError
 
         [<NativeApi(EntryPoint = "lf_db_get_cameras")>]
         abstract member GetCameras : db : LensFunDatabaseHandle -> nativeptr<nativeptr<LensFunCameraHandle>>
@@ -349,6 +352,18 @@ type LensFun(databaseFiles : string[]) =
     member x.DatabaseFiles = dbFiles :> seq<_>
 
     member x.Handle = db.Handle
+
+
+    member x.AddFile (file : string) =
+        if File.Exists file then 
+            let err = lf.LoadDatabaseFile(db, file)
+            err = Implementation.LensFunError.NoError
+        else
+            false
+
+    member x.AddXml(xml : string) =
+        let err = lf.LoadData(db, "xml", xml, unativeint xml.Length)
+        err = Implementation.LensFunError.NoError
 
     member x.GetCameras() =
         if db.IsNull then raise <| ObjectDisposedException("LensFun")
