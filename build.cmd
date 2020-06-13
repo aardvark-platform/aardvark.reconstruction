@@ -3,25 +3,8 @@ setlocal enableextensions enabledelayedexpansion
 PUSHD %~dp0
 
 
-
-if exist boot.fsx (
-    if NOT exist .paket\fake.exe (
-        dotnet tool install fake-cli --tool-path .paket --version 5.16.0
-        if errorlevel 1 (
-          exit /b %errorlevel%
-        )
-    )
-
-    powershell write-host -fore Green bootstrapping project
-    .paket\fake.exe run boot.fsx
-    if errorlevel 1 (
-      exit /b %errorlevel%
-    )
-	del boot.fsx
-)
-
 IF NOT exist .paket\paket.exe (
-	dotnet tool install Paket --tool-path .paket
+	dotnet tool install Paket --tool-path .paket --version [5.242.2] 
 )
 
 if NOT exist paket.lock (

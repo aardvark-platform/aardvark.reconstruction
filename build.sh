@@ -2,7 +2,7 @@
 
 if [ ! -f ".paket/paket" ]; then
 	echo installing paket
-	dotnet tool install Paket --tool-path .paket
+	dotnet tool install Paket --tool-path .paket --version [5.242.2] 
 fi
 
 
