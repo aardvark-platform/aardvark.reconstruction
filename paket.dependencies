@@ -17,7 +17,7 @@ nuget Aardvark.Application.Utilities        ~> 5.0.7
 nuget Aardvark.Rendering.Text               ~> 5.0.7
 nuget FShade ~> 5.0.4
 
-nuget Ultz.SuperInvoke ~> 1.0.4
+nuget Ultz.SuperInvoke ~> 1.1.0
 
 nuget MiniCV ~> 1.1.0
 nuget FSharp.Data
