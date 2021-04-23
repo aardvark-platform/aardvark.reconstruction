@@ -7,3 +7,4 @@ Aardvark.Application
 Aardvark.Application.Slim
 Aardvark.Application.Utilities
 Aardvark.Rendering.Text
+Aardvark.Base.Tensors

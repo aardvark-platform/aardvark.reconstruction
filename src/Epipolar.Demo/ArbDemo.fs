@@ -1,16 +1,16 @@
 namespace Aardvark.Reconstruction.Epipolar.Demo
 
 open System
+open Aardvark.Rendering
+open Aardvark.Reconstruction
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.Rendering.Text
-open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.Application
 open Aardvark.Application.Utilities
 open Aardvark.Application.Slim
 open FShade
-open Aardvark.Reconstruction
 open FsCheck
 
 [<AutoOpen>]
@@ -134,7 +134,7 @@ module ArbDemo =
                             do! DefaultSurfaces.pointSpriteFragment
                           }
                           |> Sg.uniform "PointSize" (AVal.constant 3.5)
-                          |> Sg.depthTest (AVal.constant DepthTestMode.None)
+                          |> Sg.depthTest (AVal.constant DepthTest.None)
                     let s2 = 
                         let ps = obs |> Array.map (fun p -> V3d(p.X,p.Y,-1.0))
                         let cs = Array.create ps.Length C4b.Black
@@ -151,7 +151,7 @@ module ArbDemo =
                             do! DefaultSurfaces.pointSpriteFragment
                           }
                           |> Sg.uniform "PointSize" (AVal.constant 2.0)
-                          |> Sg.depthTest (AVal.constant DepthTestMode.None)
+                          |> Sg.depthTest (AVal.constant DepthTest.None)
                           |> Sg.pass (RenderPass.after "asd" RenderPassOrder.Arbitrary RenderPass.main)
                     Sg.ofList [s1;s2]
             ) |> Sg.dynamic
@@ -318,7 +318,7 @@ module ArbDemo =
                             do! DefaultSurfaces.pointSpriteFragment
                           }
                           |> Sg.uniform "PointSize" (AVal.constant 3.5)
-                          |> Sg.depthTest (AVal.constant DepthTestMode.None)
+                          |> Sg.depthTest (AVal.constant DepthTest.None)
                     let s2 = 
                         let ps = obs |> Array.map (fun p -> V3d(p.X,p.Y,-1.0))
                         let cs = Array.create ps.Length C4b.Black
@@ -335,7 +335,7 @@ module ArbDemo =
                             do! DefaultSurfaces.pointSpriteFragment
                           }
                           |> Sg.uniform "PointSize" (AVal.constant 2.0)
-                          |> Sg.depthTest (AVal.constant DepthTestMode.None)
+                          |> Sg.depthTest (AVal.constant DepthTest.None)
                           |> Sg.pass (RenderPass.after "asd" RenderPassOrder.Arbitrary RenderPass.main)
                     Sg.ofList [s1;s2]
             ) |> Sg.dynamic

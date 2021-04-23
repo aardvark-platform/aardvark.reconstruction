@@ -5,7 +5,7 @@ open Aardvark.Base
 open FSharp.Data.Adaptive
 open MiniCV 
 open Aardvark.Geometry
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Aardvark.SceneGraph
 open Aardvark.Application.Slim
 open Aardvark.Application
@@ -34,7 +34,7 @@ module Bla =
             let l = heaty.[i]
             let r = if i < heaty.Length - 1 then heaty.[i + 1] else l
             let frac = v - float i
-            ((1.0 - frac) * l + frac * r).ToC4b()
+            ((float32 (1.0 - frac)) * l + (float32 frac) * r).ToC4b()
 
 [<EntryPoint>]
 let main args =
@@ -175,7 +175,7 @@ let main args =
         )
         |> Sg.ofList
         |> Sg.blendMode (AVal.constant BlendMode.Blend)
-        |> Sg.depthTest (AVal.constant DepthTestMode.None)
+        |> Sg.depthTest (AVal.constant DepthTest.None)
         |> Sg.pass (RenderPass.after "asdasd" RenderPassOrder.Arbitrary RenderPass.main)
         |> Sg.viewTrafo (AVal.constant Trafo3d.Identity)
         |> Sg.projTrafo (AVal.constant Trafo3d.Identity)
@@ -197,7 +197,7 @@ let main args =
             do! DefaultSurfaces.vertexColor
         }
         |> Sg.uniform "PointSize" (AVal.constant 4.0)
-        |> Sg.depthTest (AVal.constant DepthTestMode.None)
+        |> Sg.depthTest (AVal.constant DepthTest.None)
         |> Sg.viewTrafo (AVal.constant Trafo3d.Identity)
         |> Sg.projTrafo (AVal.constant Trafo3d.Identity)
         |> Sg.pass (RenderPass.after "asdasd" RenderPassOrder.Arbitrary RenderPass.main)

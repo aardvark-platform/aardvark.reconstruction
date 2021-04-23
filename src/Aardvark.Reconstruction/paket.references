@@ -3,3 +3,4 @@ Aardvark.Base.FSharp
 MiniCV
 FSharp.Data
 MetadataExtractor
+Aardvark.Base.Tensors

@@ -2,8 +2,8 @@
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
+open Aardvark.Rendering
 open Aardvark.Reconstruction
-open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open FsCheck
 
