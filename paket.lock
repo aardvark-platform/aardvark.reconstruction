@@ -259,7 +259,7 @@ NUGET
       FShade.Core (5.1.7)
       FShade.Imperative (5.1.7)
       FSharp.Core (>= 4.6.2)
-    FSharp.Core (4.6.2)
+    FSharp.Core (4.7)
     FSharp.Data (3.3.3)
       FSharp.Core (>= 4.3.4)
     FSharp.Data.Adaptive (1.2)
