@@ -29,11 +29,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: dotnet aardpack src\Aardvark.Reconstruction.sln --norelease --notag
-      # - name: Upload Packages
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: packages
-      #     path: bin\pack
+      - name: Upload Packages
+        uses: actions/upload-artifact@v2
+        with:
+          name: packages
+          path: bin\pack
       # - name: NuGet
       #   env:
       #     NUGET_KEY: ${{ secrets.GITHUB_TOKEN }}
