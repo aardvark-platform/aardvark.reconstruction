@@ -1,10 +1,12 @@
 ﻿namespace LensFunSharp
 
 open System
-open Ultz.SuperInvoke
-open Ultz.SuperInvoke.Loader
+open Silk.NET.Core
+open Silk.NET.Core.Loader
+open Silk.NET.Core.Native
 open System.Runtime.InteropServices
 open System.Runtime.CompilerServices
+open System.Security
 open Microsoft.FSharp.NativeInterop
 open Aardvark.Base
 open System.IO
@@ -139,85 +141,166 @@ module Implementation =
         | NoError = 0
         | WrongFormat = 1
 
-    [<AbstractClass>]
-    type LensFun(ctx : byref<NativeApiContext>) =
-        inherit NativeApiContainer(&ctx)
 
-        [<NativeApi(EntryPoint = "lf_db_new")>]
-        abstract member NewDatabase : unit -> LensFunDatabaseHandle
+    module LensFunRaw =
+        [<Literal>]
+        let lib = "lensfun"
 
-        [<NativeApi(EntryPoint = "lf_db_load")>]
-        abstract member LoadDatabase : db : LensFunDatabaseHandle -> unit
+        [<DllImport(lib, EntryPoint = "lf_db_new"); SuppressUnmanagedCodeSecurity>]
+        extern LensFunDatabaseHandle newDatabase()
 
-        [<NativeApi(EntryPoint = "lf_db_destroy")>]
-        abstract member DestroyDatabase : db : LensFunDatabaseHandle -> unit
+        [<DllImport(lib, EntryPoint = "lf_db_load"); SuppressUnmanagedCodeSecurity>]
+        extern void loadDatabase(LensFunDatabaseHandle db)
+
+        [<DllImport(lib, EntryPoint = "lf_db_destroy"); SuppressUnmanagedCodeSecurity>]
+        extern void destroyDatabase(LensFunDatabaseHandle db)
+
+        [<DllImport(lib, EntryPoint = "lf_db_load_file", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern LensFunError loadDatabaseFile(LensFunDatabaseHandle db, string path)
+
+        [<DllImport(lib, EntryPoint = "lf_db_load_data", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern LensFunError loadData(LensFunDatabaseHandle db, [<MarshalAs(UnmanagedType.LPStr)>] string errorContext, [<MarshalAs(UnmanagedType.LPStr)>] string data, nativeint dataSize) 
+
+        [<DllImport(lib, EntryPoint = "lf_db_get_cameras"); SuppressUnmanagedCodeSecurity>]
+        extern LensFunCameraHandle* * getCameras(LensFunDatabaseHandle db)
+        
+        [<DllImport(lib, EntryPoint = "lf_db_get_mounts"); SuppressUnmanagedCodeSecurity>]
+        extern LensFunMountHandle* * getMounts(LensFunDatabaseHandle db)
+        
+        [<DllImport(lib, EntryPoint = "lf_db_get_lenses"); SuppressUnmanagedCodeSecurity>]
+        extern LensFunLensHandle* * getLenses(LensFunDatabaseHandle db)
+        
+        [<DllImport(lib, EntryPoint = "lf_db_find_cameras", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern LensFunCameraHandle* * findCameras(LensFunDatabaseHandle db, [<MarshalAs(UnmanagedType.LPStr)>] string maker, [<MarshalAs(UnmanagedType.LPStr)>] string model)
+
+        [<DllImport(lib, EntryPoint = "lf_db_find_cameras_ext", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern LensFunCameraHandle* * findCamerasExt(LensFunDatabaseHandle db, [<MarshalAs(UnmanagedType.LPStr)>] string maker, [<MarshalAs(UnmanagedType.LPStr)>] string model, SearchFlags flags)
+
+        [<DllImport(lib, EntryPoint = "lf_db_find_lenses_hd", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern LensFunLensHandle* * findLenses(LensFunDatabaseHandle db, LensFunCameraHandle* camera, [<MarshalAs(UnmanagedType.LPStr)>] string maker, [<MarshalAs(UnmanagedType.LPStr)>] string lensModel, SearchFlags flags)
+
+        [<DllImport(lib, EntryPoint = "lf_db_find_mount", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern LensFunMountHandle* findMount(LensFunDatabaseHandle db, [<MarshalAs(UnmanagedType.LPStr)>] string name)
+
+        [<DllImport(lib, EntryPoint = "lf_lens_get_mount_names", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern byte* * getMountNames(LensFunDatabaseHandle db, LensFunLensHandle* lens)
+
+        [<DllImport(lib, EntryPoint = "lf_lens_interpolate_distortion", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern int interpolateDistortion(LensFunLensHandle* lens, float32 crop, float32 focal, LensCalibDistortionHandle& distortion)
+
+
+        [<DllImport(lib, EntryPoint = "lf_modifier_create", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern LensFunModifierHandle createModifier(LensFunLensHandle* lens, float32 focal, float32 imgCrop, int width, int height, LensFunPixelFormat format, bool reverse)
+        
+        [<DllImport(lib, EntryPoint = "lf_modifier_destroy", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern void destroyModifier(LensFunModifierHandle handle)
+        
+        [<DllImport(lib, EntryPoint = "lf_modifier_enable_scaling", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern int enableScaling(LensFunModifierHandle handle, float32 scale)
+        
+        [<DllImport(lib, EntryPoint = "lf_modifier_enable_distortion_correction", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern int enableDistortionCorrection(LensFunModifierHandle handle)
+        
+        [<DllImport(lib, EntryPoint = "lf_modifier_enable_tca_correction", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern int enableTcaCorrection(LensFunModifierHandle handle)
+        
+        [<DllImport(lib, EntryPoint = "lf_modifier_enable_vignetting_correction", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern int enableVignettingCorrection(LensFunModifierHandle handle, float32 aperture, float32 distance)
+
+        [<DllImport(lib, EntryPoint = "lf_modifier_enable_projection_transform", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern int enableProjectionTransform(LensFunModifierHandle handle, LensType target)
+        
+        [<DllImport(lib, EntryPoint = "lf_modifier_enable_perspective_correction", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern int enablePerspectiveCorrection(LensFunModifierHandle handle, float32* x, float32* y, int count, float32 d)
+
+        [<DllImport(lib, EntryPoint = "lf_modifier_get_auto_scale", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern float32 getAutoScale(LensFunModifierHandle handle, bool reverse)
+        
+        [<DllImport(lib, EntryPoint = "lf_modifier_apply_geometry_distortion", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern int applyGeometryDistortion(LensFunModifierHandle handle, float32 xu, float32 yu, int width, int height, V2f* res)
+        
+        [<DllImport(lib, EntryPoint = "lf_modifier_apply_color_modification", CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
+        extern int applyColorModification(LensFunModifierHandle handle, nativeint pixels, float32 xu, float32 yu, int width, int height, int comp_role, int row_stride)
+
+    // [<AbstractClass; NativeApi(Convention = CallingConvention.Cdecl)>]
+    // type LensFun(ctx : Silk.NET.Core.Contexts.INativeContext) =
+    //     inherit NativeAPI(ctx)
+
+    //     [<NativeApi(EntryPoint = "lf_db_new")>]
+    //     abstract member  NewDatabase : unit -> LensFunDatabaseHandle
+
+    //     [<NativeApi(EntryPoint = "lf_db_load")>]
+    //     abstract member LoadDatabase : db : LensFunDatabaseHandle -> unit
+
+    //     [<NativeApi(EntryPoint = "lf_db_destroy")>]
+    //     abstract member DestroyDatabase : db : LensFunDatabaseHandle -> unit
     
-        [<NativeApi(EntryPoint = "lf_db_load_file")>]
-        abstract member LoadDatabaseFile : db : LensFunDatabaseHandle * path : string -> LensFunError
+    //     [<NativeApi(EntryPoint = "lf_db_load_file")>]
+    //     abstract member LoadDatabaseFile : db : LensFunDatabaseHandle * path : string -> LensFunError
         
-        [<NativeApi(EntryPoint = "lf_db_load_data")>]
-        abstract member LoadData : db : LensFunDatabaseHandle * [<MarshalAs(UnmanagedType.LPStr)>] errorContext : string * [<MarshalAs(UnmanagedType.LPStr)>] data : string * dataSize : unativeint -> LensFunError
+    //     [<NativeApi(EntryPoint = "lf_db_load_data")>]
+    //     abstract member LoadData : db : LensFunDatabaseHandle * [<MarshalAs(UnmanagedType.LPStr)>] errorContext : string * [<MarshalAs(UnmanagedType.LPStr)>] data : string * dataSize : unativeint -> LensFunError
 
-        [<NativeApi(EntryPoint = "lf_db_get_cameras")>]
-        abstract member GetCameras : db : LensFunDatabaseHandle -> nativeptr<nativeptr<LensFunCameraHandle>>
+    //     [<NativeApi(EntryPoint = "lf_db_get_cameras")>]
+    //     abstract member GetCameras : db : LensFunDatabaseHandle -> nativeptr<nativeptr<LensFunCameraHandle>>
         
-        [<NativeApi(EntryPoint = "lf_db_get_mounts")>]
-        abstract member GetMounts : db : LensFunDatabaseHandle -> nativeptr<nativeptr<LensFunMountHandle>>
+    //     [<NativeApi(EntryPoint = "lf_db_get_mounts")>]
+    //     abstract member GetMounts : db : LensFunDatabaseHandle -> nativeptr<nativeptr<LensFunMountHandle>>
         
-        [<NativeApi(EntryPoint = "lf_db_get_lenses")>]
-        abstract member GetLenses : db : LensFunDatabaseHandle -> nativeptr<nativeptr<LensFunLensHandle>>
+    //     [<NativeApi(EntryPoint = "lf_db_get_lenses")>]
+    //     abstract member GetLenses : db : LensFunDatabaseHandle -> nativeptr<nativeptr<LensFunLensHandle>>
         
-        [<NativeApi(EntryPoint = "lf_db_find_cameras")>]
-        abstract member FindCameras : db : LensFunDatabaseHandle * maker : string * model : string -> nativeptr<nativeptr<LensFunCameraHandle>>
+    //     [<NativeApi(EntryPoint = "lf_db_find_cameras")>]
+    //     abstract member FindCameras : db : LensFunDatabaseHandle * maker : string * model : string -> nativeptr<nativeptr<LensFunCameraHandle>>
 
-        [<NativeApi(EntryPoint = "lf_db_find_cameras_ext")>]
-        abstract member FindCameras : db : LensFunDatabaseHandle * maker : string * model : string * flags : SearchFlags -> nativeptr<nativeptr<LensFunCameraHandle>>
+    //     [<NativeApi(EntryPoint = "lf_db_find_cameras_ext")>]
+    //     abstract member FindCameras : db : LensFunDatabaseHandle * maker : string * model : string * flags : SearchFlags -> nativeptr<nativeptr<LensFunCameraHandle>>
         
-        [<NativeApi(EntryPoint = "lf_db_find_lenses_hd")>]
-        abstract member FindLenses : db : LensFunDatabaseHandle * camera : nativeptr<LensFunCameraHandle> * maker : string * lensModel : string * flags : SearchFlags -> nativeptr<nativeptr<LensFunLensHandle>>
+    //     [<NativeApi(EntryPoint = "lf_db_find_lenses_hd")>]
+    //     abstract member FindLenses : db : LensFunDatabaseHandle * camera : nativeptr<LensFunCameraHandle> * maker : string * lensModel : string * flags : SearchFlags -> nativeptr<nativeptr<LensFunLensHandle>>
 
-        [<NativeApi(EntryPoint = "lf_db_find_mount")>]
-        abstract member FindMount : db : LensFunDatabaseHandle * name : string -> nativeptr<LensFunMountHandle>
+    //     [<NativeApi(EntryPoint = "lf_db_find_mount")>]
+    //     abstract member FindMount : db : LensFunDatabaseHandle * name : string -> nativeptr<LensFunMountHandle>
 
-        [<NativeApi(EntryPoint = "lf_lens_get_mount_names")>]
-        abstract member GetLensMountNames : db : LensFunDatabaseHandle * lens : nativeptr<LensFunLensHandle> -> nativeptr<nativeptr<byte>>
+    //     [<NativeApi(EntryPoint = "lf_lens_get_mount_names")>]
+    //     abstract member GetLensMountNames : db : LensFunDatabaseHandle * lens : nativeptr<LensFunLensHandle> -> nativeptr<nativeptr<byte>>
 
-        [<NativeApi(EntryPoint = "lf_lens_interpolate_distortion")>]
-        abstract member InterpolateDistortion : lens : nativeptr<LensFunLensHandle> * crop : float32 * focal : float32 * distortion : byref<LensCalibDistortionHandle> -> int
+    //     [<NativeApi(EntryPoint = "lf_lens_interpolate_distortion")>]
+    //     abstract member InterpolateDistortion : lens : nativeptr<LensFunLensHandle> * crop : float32 * focal : float32 * distortion : byref<LensCalibDistortionHandle> -> int
 
 
-        [<NativeApi(EntryPoint = "lf_modifier_create")>]
-        abstract member CreateModifier : lens : nativeptr<LensFunLensHandle> * focal : float32 * imgCrop : float32 * width : int * height : int * format : LensFunPixelFormat * reverse : bool -> LensFunModifierHandle
+    //     [<NativeApi(EntryPoint = "lf_modifier_create")>]
+    //     abstract member CreateModifier : lens : nativeptr<LensFunLensHandle> * focal : float32 * imgCrop : float32 * width : int * height : int * format : LensFunPixelFormat * reverse : bool -> LensFunModifierHandle
         
-        [<NativeApi(EntryPoint = "lf_modifier_destroy")>]
-        abstract member DestroyModifier : m : LensFunModifierHandle -> unit
+    //     [<NativeApi(EntryPoint = "lf_modifier_destroy")>]
+    //     abstract member DestroyModifier : m : LensFunModifierHandle -> unit
         
-        [<NativeApi(EntryPoint = "lf_modifier_enable_scaling")>]
-        abstract member EnableScaling : m : LensFunModifierHandle * scale : float32 -> int
+    //     [<NativeApi(EntryPoint = "lf_modifier_enable_scaling")>]
+    //     abstract member EnableScaling : m : LensFunModifierHandle * scale : float32 -> int
         
-        [<NativeApi(EntryPoint = "lf_modifier_enable_distortion_correction")>]
-        abstract member EnableDistortionCorrection : m : LensFunModifierHandle -> int
+    //     [<NativeApi(EntryPoint = "lf_modifier_enable_distortion_correction")>]
+    //     abstract member EnableDistortionCorrection : m : LensFunModifierHandle -> int
         
-        [<NativeApi(EntryPoint = "lf_modifier_enable_tca_correction")>]
-        abstract member EnableTcaCorrection : m : LensFunModifierHandle -> int
+    //     [<NativeApi(EntryPoint = "lf_modifier_enable_tca_correction")>]
+    //     abstract member EnableTcaCorrection : m : LensFunModifierHandle -> int
         
-        [<NativeApi(EntryPoint = "lf_modifier_enable_vignetting_correction")>]
-        abstract member EnableVignettingCorrection : m : LensFunModifierHandle * aperture : float32 * distance : float32 -> int
+    //     [<NativeApi(EntryPoint = "lf_modifier_enable_vignetting_correction")>]
+    //     abstract member EnableVignettingCorrection : m : LensFunModifierHandle * aperture : float32 * distance : float32 -> int
         
-        [<NativeApi(EntryPoint = "lf_modifier_enable_projection_transform")>]
-        abstract member EnableProjectionTransform : m : LensFunModifierHandle * target : LensType -> int
+    //     [<NativeApi(EntryPoint = "lf_modifier_enable_projection_transform")>]
+    //     abstract member EnableProjectionTransform : m : LensFunModifierHandle * target : LensType -> int
         
-        [<NativeApi(EntryPoint = "lf_modifier_enable_perspective_correction")>]
-        abstract member EnablePerspectiveCorrection : m : LensFunModifierHandle * x : nativeptr<float32> * y : nativeptr<float32> * count : int * d : float32 -> int
+    //     [<NativeApi(EntryPoint = "lf_modifier_enable_perspective_correction")>]
+    //     abstract member EnablePerspectiveCorrection : m : LensFunModifierHandle * x : nativeptr<float32> * y : nativeptr<float32> * count : int * d : float32 -> int
 
-        [<NativeApi(EntryPoint = "lf_modifier_get_auto_scale")>]
-        abstract member GetAutoScale : m : LensFunModifierHandle * reverse : bool -> float32
+    //     [<NativeApi(EntryPoint = "lf_modifier_get_auto_scale")>]
+    //     abstract member GetAutoScale : m : LensFunModifierHandle * reverse : bool -> float32
         
-        [<NativeApi(EntryPoint = "lf_modifier_apply_geometry_distortion")>]
-        abstract member ApplyGeometryDistortion : m : LensFunModifierHandle * xu : float32 * yu : float32 * width : int * height : int * res : nativeptr<V2f> -> int
+    //     [<NativeApi(EntryPoint = "lf_modifier_apply_geometry_distortion")>]
+    //     abstract member ApplyGeometryDistortion : m : LensFunModifierHandle * xu : float32 * yu : float32 * width : int * height : int * res : nativeptr<V2f> -> int
         
-        [<NativeApi(EntryPoint = "lf_modifier_apply_color_modification")>]
-        abstract member ApplyColorModification : m : LensFunModifierHandle * pixels : nativeint * xu : float32 * yu : float32 * width : int * height : int * comp_role : int * row_stride : int -> int
+    //     [<NativeApi(EntryPoint = "lf_modifier_apply_color_modification")>]
+    //     abstract member ApplyColorModification : m : LensFunModifierHandle * pixels : nativeint * xu : float32 * yu : float32 * width : int * height : int * comp_role : int * row_stride : int -> int
 
 type private PointerEnumerator<'a, 'b when 'a : unmanaged>(ptr : nativeptr<nativeptr<'a>>, read : nativeptr<'a> -> 'b) =
     let mutable current = ptr
@@ -276,7 +359,9 @@ type private Loader() =
     inherit LibraryLoader()
 
     override x.CoreLoadNativeLibrary(name : string) : nativeint =
-        Aardvark.LoadLibrary(typeof<Loader>.Assembly, name)
+        
+        let ptr = Aardvark.LoadLibrary(typeof<Loader>.Assembly, name)
+        ptr
 
     override x.CoreFreeNativeLibrary(name : nativeint) : unit =
         ()
@@ -317,8 +402,7 @@ type LensFunDatabase private() =
 
 
 type LensFun(databaseFiles : string[]) =
-    let lf = LibraryActivator.CreateInstance<Implementation.LensFun>("lensfun", Loader())
-    let mutable db = lf.NewDatabase()
+    let mutable db = Implementation.LensFunRaw.newDatabase()
     let dbFiles = System.Collections.Generic.HashSet<string>()
 
     static let camCache    = System.Collections.Concurrent.ConcurrentDictionary<LensFun * nativeptr<Implementation.LensFunCameraHandle>, Camera>()
@@ -340,13 +424,12 @@ type LensFun(databaseFiles : string[]) =
 
     do for f in databaseFiles do
         if dbFiles.Add f then
-            match lf.LoadDatabaseFile(db, f) with
+            match Implementation.LensFunRaw.loadDatabaseFile(db, f) with
             | Implementation.LensFunError.NoError -> ()
             | err -> 
                 dbFiles.Remove f |> ignore
                 printfn "could not load %s: %A" (Path.GetFileName f) err
         
-    member internal x.LF = lf
     member internal x.DB = db
 
     member x.DatabaseFiles = dbFiles :> seq<_>
@@ -356,28 +439,28 @@ type LensFun(databaseFiles : string[]) =
 
     member x.AddFile (file : string) =
         if File.Exists file then 
-            let err = lf.LoadDatabaseFile(db, file)
+            let err = Implementation.LensFunRaw.loadDatabaseFile(db, file)
             err = Implementation.LensFunError.NoError
         else
             false
 
     member x.AddXml(xml : string) =
-        let err = lf.LoadData(db, "xml", xml, unativeint xml.Length)
+        let err = Implementation.LensFunRaw.loadData(db, "xml", xml, nativeint xml.Length)
         err = Implementation.LensFunError.NoError
 
     member x.GetCameras() =
         if db.IsNull then raise <| ObjectDisposedException("LensFun")
-        let ptr = lf.GetCameras(db)
+        let ptr = Implementation.LensFunRaw.getCameras(db)
         getCameras x ptr
         
     member x.GetMounts() =
         if db.IsNull then raise <| ObjectDisposedException("LensFun")
-        let ptr = lf.GetMounts(db)
+        let ptr = Implementation.LensFunRaw.getMounts(db)
         getMounts x ptr
 
     member x.GetLenses() =
         if db.IsNull then raise <| ObjectDisposedException("LensFun")
-        let ptr = lf.GetLenses(db)
+        let ptr = Implementation.LensFunRaw.getLenses(db)
         getLenses x ptr
         
        
@@ -386,24 +469,24 @@ type LensFun(databaseFiles : string[]) =
 
         let ptr =
             match flags with
-            | Some flags -> lf.FindCameras(db, make, model, flags)
-            | None -> lf.FindCameras(db, make, model)
+            | Some flags -> Implementation.LensFunRaw.findCamerasExt(db, make, model, flags)
+            | None -> Implementation.LensFunRaw.findCameras(db, make, model)
         
         getCameras x ptr
 
     member x.FindMount(name : string) =
         if db.IsNull then raise <| ObjectDisposedException("LensFun")
-        let ptr = lf.FindMount(db, name)
+        let ptr = Implementation.LensFunRaw.findMount(db, name)
         if ptr = NativePtr.zero then None
         else Mount(x, ptr) |> Some
         
     member x.FindLenses(cam : Camera, ?make : string, ?model : string, ?flags : SearchFlags) =
         if db.IsNull then raise <| ObjectDisposedException("LensFun")
-        let ptr = lf.FindLenses(db, cam.Handle, defaultArg make null, defaultArg model null, defaultArg flags SearchFlags.None)
+        let ptr = Implementation.LensFunRaw.findLenses(db, cam.Handle, defaultArg make null, defaultArg model null, defaultArg flags SearchFlags.None)
         getLenses x ptr
 
     member x.FindLensMounts(lens : Lens) =
-        let pMounts = lf.GetLensMountNames(db, lens.Handle)
+        let pMounts = Implementation.LensFunRaw.getMountNames(db, lens.Handle)
         if pMounts = NativePtr.zero then
             Set.empty
         else
@@ -419,7 +502,7 @@ type LensFun(databaseFiles : string[]) =
 
     member x.InterpolateDistortion(lens : Lens, cropFactor : float, focal : float) =
         let mutable res = Unchecked.defaultof<_>
-        if lf.InterpolateDistortion(lens.Handle, float32 cropFactor, float32 focal, &res) <> 0 then
+        if Implementation.LensFunRaw.interpolateDistortion(lens.Handle, float32 cropFactor, float32 focal, &res) <> 0 then
             Some (Distortion(lens, res))
         else
             None
@@ -427,7 +510,7 @@ type LensFun(databaseFiles : string[]) =
     member private x.Dispose(disposing : bool) =
         if disposing then GC.SuppressFinalize x
         if db.IsValid then
-            lf.DestroyDatabase db
+            Implementation.LensFunRaw.destroyDatabase db
             db <- Implementation.LensFunDatabaseHandle.Null
 
     member x.Dispose() = x.Dispose true
@@ -540,7 +623,7 @@ and Lens internal(parent : LensFun, ptr : nativeptr<Implementation.LensFunLensHa
 
     member x.CreateModifier(cam : Camera, info : ImageInfo, ?reverse : bool) =
         let reverse = defaultArg reverse false
-        let lf = parent.LF.CreateModifier(x.Handle, float32 info.focalLength, float32 cam.CropFactor, info.size.X,  info.size.Y, Implementation.LensFunPixelFormat.U8, reverse)
+        let lf = Implementation.LensFunRaw.createModifier(x.Handle, float32 info.focalLength, float32 cam.CropFactor, info.size.X,  info.size.Y, Implementation.LensFunPixelFormat.U8, reverse)
         let res = new Modifier(parent, cam, x, lf)
         
         res.EnableProjectionTransform(LensType.Rectilinear) |> ignore
@@ -558,7 +641,7 @@ and Lens internal(parent : LensFun, ptr : nativeptr<Implementation.LensFunLensHa
 
 
     member x.TryGetRemapMatrix(cam : Camera, exifFocal : float, size : V2i, backward : bool) =
-        let lf = parent.LF.CreateModifier(x.Handle, float32 exifFocal, float32 cam.CropFactor, size.X, size.Y, Implementation.LensFunPixelFormat.F32, backward)
+        let lf = Implementation.LensFunRaw.createModifier(x.Handle, float32 exifFocal, float32 cam.CropFactor, size.X, size.Y, Implementation.LensFunPixelFormat.F32, backward)
         use res = new Modifier(parent, cam, x, lf)
 
         res.EnableProjectionTransform(LensType.Rectilinear) |> ignore
@@ -650,7 +733,7 @@ and Modifier internal(parent : LensFun, cam : Camera, lens : Lens, handle : Impl
 
             let invSize = 1.0f / V2f size
             let gc = GCHandle.Alloc(data, GCHandleType.Pinned)
-            let ret = parent.LF.ApplyGeometryDistortion(handle, 0.0f, 0.0f, size.X, size.Y, NativePtr.ofNativeInt (gc.AddrOfPinnedObject()))
+            let ret = Implementation.LensFunRaw.applyGeometryDistortion(handle, 0.0f, 0.0f, size.X, size.Y, NativePtr.ofNativeInt (gc.AddrOfPinnedObject()))
             gc.Free()
             if ret <> 0 then
                 for i in 0 .. data.Length - 1 do
@@ -665,25 +748,25 @@ and Modifier internal(parent : LensFun, cam : Camera, lens : Lens, handle : Impl
     member x.Handle = handle
 
     member x.Dispose() =
-        parent.LF.DestroyModifier handle
+        Implementation.LensFunRaw.destroyModifier handle
 
     member x.EnableDistortionCorrection() =
-        parent.LF.EnableDistortionCorrection(handle) <> 0
+        Implementation.LensFunRaw.enableDistortionCorrection(handle) <> 0
         
     member x.EnableProjectionTransform(dst : LensType) =
-        parent.LF.EnableProjectionTransform(handle, dst) <> 0
+        Implementation.LensFunRaw.enableProjectionTransform(handle, dst) <> 0
         
     member x.EnableScaling(scale : float) =
-        parent.LF.EnableScaling(handle, float32 scale) <> 0
+        Implementation.LensFunRaw.enableScaling(handle, float32 scale) <> 0
 
     member x.EnableTcaCorrection() =
-        parent.LF.EnableTcaCorrection(handle) <> 0
+        Implementation.LensFunRaw.enableTcaCorrection(handle) <> 0
         
     member x.EnableVignettingCorrection(aperture : float, distance : float) =
-        parent.LF.EnableVignettingCorrection(handle, float32 aperture, float32 distance) <> 0
+        Implementation.LensFunRaw.enableVignettingCorrection(handle, float32 aperture, float32 distance) <> 0
         
     member x.GetAutoScale(backward : bool) =
-        parent.LF.GetAutoScale(handle, backward) |> float
+        Implementation.LensFunRaw.getAutoScale(handle, backward) |> float
 
     member x.TryGetRemapMatrix(size : V2i) : option<Matrix<V2f>> =
         getRemapMatrix size

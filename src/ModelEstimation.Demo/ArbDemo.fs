@@ -188,7 +188,8 @@ module ArbDemo =
                 | InQuad q -> 
                     IndexedGeometryPrimitives.quad' q.P0 q.P1 q.P2 q.P3 C4b.Red    
                 | InVolume b -> 
-                    IndexedGeometryPrimitives.Box.wireBox b C4b.Red            
+                    IndexedGeometryPrimitives.Box.wireBox b C4b.Red    
+                | _ -> failwith "bad"
             )
             |> AVal.map Sg.ofIndexedGeometry
             |> Sg.dynamic

@@ -410,12 +410,14 @@ module ArbDemo =
             | _ -> ()
         )
         
+        let pickler = MBrace.FsPickler.FsPickler.CreateBinarySerializer()
+
         let stuff =
             counter |> AVal.map ( fun _ -> 
                 Log.startTimed("Generate Scenario")
 
                 //let scenario = Gen.eval 0 (Random.StdGen(rand.UniformInt(),rand.UniformInt())) Lala.genPlaneScenario 
-                let scenario : Scenario = @"/Users/atti/temp/dump.bin" |> File.readAllBytes |> Pickler.pickler.UnPickle
+                let scenario : Scenario = @"/Users/atti/temp/dump.bin" |> File.readAllBytes |> pickler.UnPickle
 
                 Log.line "Scenario:\n"
                 //Log.line "C0:%A" scene.cam0
@@ -573,9 +575,11 @@ module ArbDemo =
             fu cf "Fundamental"
             //fu cp "P6P"
 
+            let pickler = MBrace.FsPickler.FsPickler.CreateBinarySerializer()
+
             if testy >= 2 then 
                 Log.error "bad found:%A" scene
-                Pickler.pickler.Pickle(scenario) |> File.writeAllBytes @"/Users/atti/temp/dump.bin"
+                pickler.Pickle(scenario) |> File.writeAllBytes @"/Users/atti/temp/dump.bin"
                 bad <- Some (scene, cf, ch, cp)
 
         let mutable ct = 0

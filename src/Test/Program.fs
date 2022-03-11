@@ -38,6 +38,7 @@ module Bla =
 
 [<EntryPoint>]
 let main args =
+    Aardvark.Init()
     let f = new LensFun()
 
 

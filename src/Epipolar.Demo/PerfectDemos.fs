@@ -248,6 +248,8 @@ module Testy2 =
         Report.Progress(1.0)
         Log.stop()
 
+    let pickler = MBrace.FsPickler.FsPickler.CreateBinarySerializer()
+
     let runManyExamples() =
         let tryAndAssert i =
             
@@ -293,7 +295,8 @@ module Testy2 =
                     | [] -> 
                         Log.line "F-decompose failed: %d" i
 
-                        F |> Pickler.pickler.Pickle |> File.writeAllBytes @"D:\temp\svdM33d.bin"
+                        
+                        F |> pickler.Pickle |> File.writeAllBytes @"D:\temp\svdM33d.bin"
 
                         [realMot]
                     | fs -> 
@@ -325,7 +328,7 @@ module Testy2 =
                 Log.error "ch %f" chs
                 Log.error "cp %f" cps
 
-                (c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d) |> Pickler.pickler.Pickle |> File.writeAllBytes @"C:\temp\dump.bin"
+                (c0, c1, Hpoints2dc0, Hpoints2dc1, Fpoints2dc0, Fpoints2dc1, Hpoints3d, Fpoints3d) |> pickler.Pickle |> File.writeAllBytes @"C:\temp\dump.bin"
 
                 failwithf "%A" (cfs+chs+cps)
 

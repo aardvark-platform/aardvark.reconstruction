@@ -1,5 +1,6 @@
 FSharp.Core
 Aardvark.Base
 Aardvark.Base.FSharp
-Ultz.SuperInvoke
+Silk.NET.Core
 Aardvark.Base.Tensors
+Aardvark.Build
