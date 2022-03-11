@@ -10,9 +10,9 @@
         ".paket": true,
         "packages": true,
         "paket-files": true,
-        "build.cmd": true,
         ".gitignore": true,
-        "**/obj/": true
+        "**/obj/": true,
+        ".ionide": true
     },
     "terminal.integrated.env.linux": {
         "LD_LIBRARY_PATH": "."
