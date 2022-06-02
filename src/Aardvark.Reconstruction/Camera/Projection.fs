@@ -7,7 +7,9 @@ type Projection =
     {
         focalLength     : float
         aspect          : float
-        distortion      : Distortion
+        principalPoint  : V2d
+        imageSize       : V2i
+        distortion      : Distortion2d
     }
 
     member private x.AsString =
@@ -34,51 +36,43 @@ module Projection =
         {
             aspect = 1.0
             focalLength = 1.0
-            distortion = { imageSize = V2i.II; distortion = RadialDistortion2d.Identity; principalPoint = V2d.Zero }
+            principalPoint = V2d.Zero
+            imageSize = V2i.II
+            distortion = Distortion2d.Identity
         }
 
-    let sameness (l : Projection) (r : Projection) =
-        abs (l.focalLength - r.focalLength) +
-        abs (l.aspect - r.aspect) +
-        Distortion.sameness l.distortion r.distortion
-
-    let approxEqual (eps : float) (l : Projection) (r : Projection) =
-        Fun.ApproximateEquals(l.focalLength, r.focalLength, eps) &&
-        Fun.ApproximateEquals(l.aspect, r.aspect, eps) &&
-        Distortion.approxEqual eps l.distortion r.distortion
-
     let project (p : V3d) (proj : Projection) =
-        let z = -p.Z
-        let rp = proj.focalLength * p.XY * V2d(1.0, proj.aspect)
-        let ptest = (rp + proj.distortion.principalPoint * z)
-        if ptest.X >= -z && ptest.X <= z && ptest.Y >= -z && ptest.Y <= z && z > 0.0 then
-            let p = (rp / z)
-            Distortion.distort p proj.distortion |> Some
-        else
+        if p.Z >= 0.0 then  
             None
+        else
+            let dp = proj.distortion.TransformPos (p.XY / -p.Z)
+            let rp = proj.focalLength * dp * V2d(1.0, proj.aspect) + proj.principalPoint
+            if rp.AllGreaterOrEqual -1.0 && rp.AllSmallerOrEqual 1.0 then
+                Some rp
+            else    
+                None
 
     let projectUnsafe (p : V3d) (proj : Projection) =
-        let p = (proj.focalLength * p.XY * V2d(1.0, proj.aspect)) / -p.Z 
-        Distortion.distort p proj.distortion
-      
+        let dp = proj.distortion.TransformPos (p.XY / -p.Z)
+        let rp = proj.focalLength * dp * V2d(1.0, proj.aspect) + proj.principalPoint
+        rp
 
     let unproject (p : V2d) (proj : Projection) =
-        let p = Distortion.undistort p proj.distortion
-        // p.Z = -1
-        // (w - proj.principalPoint) / (proj.focalLength * V2d(1.0, proj.aspect)) = p.XY
-        V3d(p / (proj.focalLength * V2d(1.0, proj.aspect)), -1.0)
+        let dp = (p - proj.principalPoint) / (V2d(1.0, proj.aspect) * proj.focalLength)
+        let p = proj.distortion.InvTransformPos(dp)
+        V3d(p, -1.0)
 
 
     let toTrafo (proj : Projection) =
         Trafo2d(
             M33d(
-                proj.focalLength,           0.0,                                -proj.distortion.principalPoint.X,
-                0.0,                        proj.focalLength * proj.aspect,     -proj.distortion.principalPoint.Y,
+                proj.focalLength,           0.0,                                -proj.principalPoint.X,
+                0.0,                        proj.focalLength * proj.aspect,     -proj.principalPoint.Y,
                 0.0,                        0.0,                                -1.0
             ),
             M33d(
-                1.0/proj.focalLength,   0.0,                                     -proj.distortion.principalPoint.X / proj.focalLength,
-                0.0,                    1.0 / (proj.aspect * proj.focalLength),  -proj.distortion.principalPoint.Y / (proj.focalLength * proj.aspect),
+                1.0/proj.focalLength,   0.0,                                     -proj.principalPoint.X / proj.focalLength,
+                0.0,                    1.0 / (proj.aspect * proj.focalLength),  -proj.principalPoint.Y / (proj.focalLength * proj.aspect),
                 0.0,                    0.0,                                     -1.0
             )
         )

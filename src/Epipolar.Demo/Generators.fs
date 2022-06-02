@@ -71,7 +71,7 @@ module Sg =
         let center = Sg.lines ~~C4b.Red ~~[| Line3d(V3d.Zero, -V3d.OOI) |]
 
 
-        let pp = -c.proj.distortion.principalPoint
+        let pp = -c.proj.principalPoint
         
 
         Sg.ofList [ 
@@ -139,7 +139,9 @@ module Generate =
         { Projection.identity with 
             aspect = aspect 
             focalLength = focal
-            distortion = { imageSize = imageSize; distortion = RadialDistortion2d.Identity; principalPoint = pp }
+            imageSize = imageSize
+            distortion = Distortion2d.Identity
+            principalPoint = pp
         }
         
     let randomScene() =
@@ -328,7 +330,9 @@ module Lala =
                 { Projection.identity with 
                     aspect = aspect 
                     focalLength = focal
-                    distortion = { imageSize = sizes; distortion = RadialDistortion2d.Identity; principalPoint = pp }
+                    imageSize = sizes
+                    distortion = Distortion2d.Identity
+                    principalPoint = pp
                 }
         }
 

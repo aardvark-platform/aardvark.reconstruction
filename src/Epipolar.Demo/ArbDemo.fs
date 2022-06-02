@@ -488,7 +488,6 @@ module ArbDemo =
                             )
                         if d > 1E-3 then Log.error "bad cam: %s (%f)" n d
                         Log.line "AvgNdcErr: %.9f" d
-                        Log.line "sameness %s %f" n (Camera.sameness scene.cam1 c)
 
                 fu co name
 

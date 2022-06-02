@@ -61,14 +61,14 @@ module Camera =
 
         Trafo3d(
             M44d(
-                proj.focalLength,           0.0,                               -proj.distortion.principalPoint.X,  0.0,
-                0.0,                        proj.focalLength * proj.aspect,    -proj.distortion.principalPoint.Y,  0.0,
+                proj.focalLength,           0.0,                               -proj.principalPoint.X,  0.0,
+                0.0,                        proj.focalLength * proj.aspect,    -proj.principalPoint.Y,  0.0,
                 0.0,                        0.0,                               -a,                      b,
                 0.0,                        0.0,                               -1.0,                    0.0
             ),
             M44d(
-                1.0/proj.focalLength,   0.0,                                    0.0,       -proj.distortion.principalPoint.X / proj.focalLength,
-                0.0,                    1.0 / (proj.aspect * proj.focalLength), 0.0,       -proj.distortion.principalPoint.Y / (proj.focalLength * proj.aspect),
+                1.0/proj.focalLength,   0.0,                                    0.0,       -proj.principalPoint.X / proj.focalLength,
+                0.0,                    1.0 / (proj.aspect * proj.focalLength), 0.0,       -proj.principalPoint.Y / (proj.focalLength * proj.aspect),
                 0.0,                    0.0,                                    0.0,       -1.0,
                 0.0,                    0.0,                                    1.0/b,     -a/b
 
@@ -101,9 +101,3 @@ module Camera =
 
     let motion (l : Camera) (r : Camera) =
         CameraView.motion l.view r.view
-
-    let sameness (l : Camera) (r : Camera) =
-        CameraView.sameness l.view r.view + Projection.sameness l.proj r.proj
-
-    let approxEqual (eps : float) (l : Camera) (r : Camera) =
-        (CameraView.approxEqual eps l.view r.view) && (Projection.approxEqual eps l.proj r.proj)

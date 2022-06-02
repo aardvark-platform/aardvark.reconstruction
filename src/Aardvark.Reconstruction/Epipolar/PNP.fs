@@ -108,6 +108,6 @@ module ``DLT Camera recovery`` =
                     let fy = ka.M11
                     let cx = -ka.M02
                     let cy = -ka.M12
-                    let proj = { Projection.focalLength = fx; aspect = fy/fx; distortion = { principalPoint = V2d(cx, cy); distortion = RadialDistortion2d.Identity; imageSize = V2i.II } }
+                    let proj = { Projection.focalLength = fx; aspect = fy/fx; principalPoint = V2d(cx, cy); distortion = Distortion2d.Identity; imageSize = V2i.II }
 
                     Some {view = cv; proj = proj}
