@@ -78,13 +78,13 @@ let main args =
     let lf = @"/Users/atti/bla/DJI_Befliegung/Kopteraufnahmen/DJI_0753.JPG"
     let rf = @"/Users/atti/bla/DJI_Befliegung/Kopteraufnahmen/DJI_0754.JPG"
 
-    let limg = (PixImage.Create lf).ToPixImage<byte>()
-    let rimg = (PixImage.Create rf).ToPixImage<byte>()
+    let limg = (PixImage.Load lf).ToPixImage<byte>()
+    let rimg = (PixImage.Load rf).ToPixImage<byte>()
 
 
     Log.startTimed "Akaze"
-    let lftrs = OpenCV.detectFeatures OpenCV.DetectorMode.Akaze limg
-    let rftrs = OpenCV.detectFeatures OpenCV.DetectorMode.Akaze rimg
+    let lftrs = OpenCV.detectFeatures DetectorMode.Akaze limg
+    let rftrs = OpenCV.detectFeatures DetectorMode.Akaze rimg
     Log.stop()
     Log.line "L = %A" limg.Size
     Log.line "LFtrs = %d" lftrs.points.Length
