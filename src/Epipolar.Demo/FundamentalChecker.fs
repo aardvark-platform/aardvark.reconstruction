@@ -278,7 +278,7 @@ module Testy =
                 do! DefaultSurfaces.diffuseTexture
                 do! DefaultSurfaces.simpleLighting
             }
-        let font = FontSquirrel.Indubitably.Regular
+        let font = DefaultFonts.Hack.Regular
         let leftTextSg =
             //Sg.empty
             Sg.text font C4b.White leftText

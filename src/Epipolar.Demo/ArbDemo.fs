@@ -90,7 +90,7 @@ module ArbDemo =
                 | 5 -> "P6P"
                 | _ -> "?"
             )
-            Sg.text FontSquirrel.HamburgerHeaven.Regular C4b.White t
+            Sg.text DefaultFonts.Hack.Regular C4b.White t
             |> Sg.scale 0.1
             |> Sg.translate -0.9 -0.9 0.0
             |> Sg.viewTrafo (AVal.constant Trafo3d.Identity)
@@ -274,7 +274,7 @@ module ArbDemo =
                     | 3 -> n
                     | _ -> "?"
                 ) current name
-            Sg.text FontSquirrel.HamburgerHeaven.Regular C4b.White t
+            Sg.text DefaultFonts.Hack.Regular C4b.White t
             |> Sg.scale 0.1
             |> Sg.translate -0.9 -0.9 0.0
             |> Sg.viewTrafo ~~Trafo3d.Identity

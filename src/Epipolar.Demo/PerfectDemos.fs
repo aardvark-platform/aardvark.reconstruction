@@ -133,14 +133,14 @@ module Testy2 =
                         | 5 -> "P6P"
                         | _ -> "?"
                     )
-                    Sg.text FontSquirrel.HamburgerHeaven.Regular C4b.White t
+                    Sg.text DefaultFonts.Hack.Regular C4b.White t
                     |> Sg.scale 0.1
                     |> Sg.translate -0.9 -0.9 0.0
                     |> Sg.viewTrafo ~~Trafo3d.Identity
                     |> Sg.projTrafo ~~Trafo3d.Identity
 
                 let printText =
-                    Sg.text FontSquirrel.HamburgerHeaven.Regular C4b.White ~~ostr
+                    Sg.text DefaultFonts.Hack.Regular C4b.White ~~ostr
                     |> Sg.scale 0.05
                     |> Sg.translate -0.9 0.9 0.0
                     |> Sg.viewTrafo ~~Trafo3d.Identity
@@ -471,7 +471,7 @@ module Testy2 =
                 | 5 -> "P6P"
                 | _ -> "?"
             )
-            Sg.text FontSquirrel.HamburgerHeaven.Regular C4b.White t
+            Sg.text DefaultFonts.Hack.Regular C4b.White t
             |> Sg.scale 0.1
             |> Sg.translate -0.9 -0.9 0.0
             |> Sg.viewTrafo ~~Trafo3d.Identity
